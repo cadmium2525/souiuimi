@@ -12,9 +12,12 @@
 | --- | --- | --- |
 | `npm test` | 48件成功 | 全5ケース計15,000出題。金銭の12状況、単独カードの曖昧性・記録の組み合わせ・残金処理の直接指示の再混入を確認 |
 | `npm run build` | 成功 | TypeScript、32モジュール、JS761.99KB（gzip198.64KB）、CSS52.88KB（gzip10.57KB） |
-| `npm run test:money` | 7項目成功 | 全7記録、3意図×3行動の9結果、各10秒の動作、金額、再挑戦・新依頼、320/360/390幅、例外0 |
+| `npm run test:money` | 7項目成功 | 全7記録、3意図×3行動の9結果、各10秒の動作、金額、再挑戦・新依頼。資金元・納品・出納控えの3カードを320/360/390幅ですべて確認、例外0 |
 | 看板と調査カードの目視 | 確認済み | 390幅の通常視点と室内から看板を撮影。壁やドア枠との交差なし。新しい納品チャット・募金箱の控えに残金の行き先の指示なし |
 | `npm run test:deployment` | 6項目成功 | 最終ビルドのサブパス起動、全5舞台・上司画像・選択肢数・WebGL代替表示 |
+| GitHub Actions | build/deploy成功 | [公開ワークフロー](https://github.com/cadmium2525/souiuimi/actions/runs/38824346343)。配信元 `0efc5b5f73fac78af6b7faa7595d21d4ba7b72d3` |
+| 公開版の一致 | 確認済み | HTMLの `index-oxLNnElJ.js` とworker版 `54749ea8dcf3ba05` が最終ビルドと一致 |
+| `npm run test:pwa:live` | 公開HTTPSで4項目成功 | 通常Chromeのインストール適合性エラー0、390/320/800幅、offline再起動・ケース5完走・通信復帰、欠落資産/例外0 |
 
 代表画像はローカルの `artifacts/money-sign-wall-fixed-390.png`、`money-sign-wall-interior-390.png`、`money-record-320.png`、`money-fund-c.png`。WindowsのChrome 155.0.8059.40、Playwright、ソフトウェアWebGLで確認しました。実機スマートフォン・Safari・実機GPU性能は未確認です。
 
