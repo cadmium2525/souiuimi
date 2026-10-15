@@ -18,6 +18,9 @@
 | `npm run test:document` | 8項目成功 | 全9結果、全7記録、原本・部数・ページ数、固定カメラと搬出速度、再挑戦・時間切れ・動き軽減、320/360/390幅、例外0 |
 | 最終の文面と画面 | 目視確認 | オフィスの長い相談、休憩室のPC・スマホ、資料の予定と記録、駅前の部長メッセージ・公共路線案内・短い結末。320/390幅で操作ボタンに重なりなし |
 | `npm run test:deployment` | 6項目成功 | 最終ビルドをサブパスで起動し、全5舞台・上司画像・2択/3択・WebGL代替表示を確認 |
+| GitHub Actions | build/deploy成功 | [公開ワークフロー](https://github.com/cadmium2525/souiuimi/actions/runs/38811298666)。配信元 `62d1351b4a935de68f6847208ee0e6d8374fd23f` |
+| 公開版の一致 | 確認済み | HTML参照の `index-B4H7u8J0.js` とworker版 `44690ef6dd0162c5` が最終ビルドと一致 |
+| `npm run test:pwa:live` | 公開HTTPSで4項目成功 | 通常Chromeでインストール適合性エラー0。390/320/800幅の案内表示、offline再起動・ケース5を結末まで完走・通信復帰、欠落資産/例外0 |
 
 画像・JSONはローカルの `artifacts/` に保存しています。代表画像は `money-explore-a.png`、`office-context-c02-320.png`、`station-bus-message-320.png`、`station-bus-route-320.png`、`document-combination-c06-390.png` です。WindowsのChrome 155.0.8059.40、Playwright、ソフトウェアWebGLで確認しました。実機スマートフォン・Safari・実機GPU性能は未確認です。
 
