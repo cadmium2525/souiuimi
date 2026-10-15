@@ -17,7 +17,7 @@ const visibleText = (instance: ReturnType<typeof createMoneyCase>) => [
 
 function controlledContexts() {
   const base: MoneyCaseFacts = {
-    kind: 'money', today: '10月15日', envelopeName: '買い出し代', occasion: '昼のお茶',
+    kind: 'money', today: '10月15日', envelopeName: '買い出し代', occasion: 'ノート',
     paidYen: 5000, purchaseYen: 3200,
     errands: [{ purpose: MONEY_PURPOSES[0], source: 'group-fund' }, { purpose: MONEY_PURPOSES[1], source: 'boss-private' }],
   };
@@ -52,12 +52,15 @@ test('each complete money clue remains compatible with multiple answers; the cur
       if (clue.id !== 'C03') assert.equal(answers.size, 3, `${clue.id} must retain all three interpretations`);
     }
   }
-  for (const answers of answersByObservation(contexts, ['C01', 'C03', 'C04']).values()) assert.equal(answers.size, 1);
+  for (const answers of answersByObservation(contexts, ['C01', 'C03', 'C05']).values()) assert.equal(answers.size, 1);
   for (const context of contexts) {
     assert.doesNotMatch(context.bodies.C03, /余り|お礼|精算|返却|募金/);
-    assert.doesNotMatch(context.bodies.C04, /昼のお茶|夕方のお菓子/);
+    assert.doesNotMatch(context.bodies.C04, /ノート|筆記具|余り|お礼|募金|参加費|残金|受け取|返却/);
+    for (const body of Object.values(context.bodies)) {
+      assert.doesNotMatch(body, /(?:余り|余った|残り|残金|釣銭|お釣り)[\s\S]*(?:お礼|受け取|募金|返却|精算|戻して|入れて)/, 'evidence must not prescribe the answer, even conditionally');
+    }
   }
-  const fixtureFacts = contexts.find(context => context.facts.occasion === '昼のお茶' && context.facts.errands[0].source === 'group-fund' && context.facts.errands[1].source === 'boss-private')!.facts;
+  const fixtureFacts = contexts.find(context => context.facts.occasion === 'ノート' && context.facts.errands[0].source === 'group-fund' && context.facts.errands[1].source === 'boss-private')!.facts;
   assert.deepEqual(Object.fromEntries(STAGE03.clues.map(clue => [clue.id, clue.body])), moneyClueBodies(fixtureFacts));
 });
 
@@ -107,13 +110,13 @@ test('3,000 errands cover all twelve contextual combinations in a credible compa
     assert.equal(plan.purchaseYen, facts.purchaseYen);
     assert.equal(plan.envelopeId, facts.envelopeName);
     assert.equal(instance.seconds, 120);
-    assert.deepEqual(instance.evidenceChain, ['C01', 'C03', 'C04']);
+    assert.deepEqual(instance.evidenceChain, ['C01', 'C03', 'C05']);
     assert.deepEqual(instance.cinematicSeconds, { A: 10, B: 10, C: 10 });
     assert.equal(instance.copy.introBoss, '買い出しありがとう。お釣りはいいよ。');
     assert.equal(instance.copy.introThought, '');
     assert.ok(instance.copy.worldLocation.includes('社内休憩室'));
     for (const text of [instance.copy.introBoss, instance.copy.introInstruction, instance.copy.worldLabel, ...Object.values(plan.signage)]) {
-      assert.doesNotMatch(text, /昼のお茶|夕方のお菓子/, 'the current errand must be discovered rather than given before inspecting');
+      assert.doesNotMatch(text, /ノート|筆記具/, 'the current errand must be discovered rather than given before inspecting');
     }
     assert.ok(instance.clues[0].body.includes(facts.occasion));
     assert.ok(instance.clues[1].body.includes(`釣銭：${formatMoney(plan.changeYen)}`));

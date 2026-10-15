@@ -21,7 +21,7 @@ const seek=async(page,t)=>{await page.evaluate(t=>window.__game.cinematic(t),t);
 const finish=async page=>{await seek(page,9.9);await page.waitForFunction(()=>window.__game.snapshot().phase==='ENDING');};
 const action=(page,name)=>page.locator(`[data-action=${name}]`).first().click();
 const choose=(page,choice)=>page.locator(`[data-action=choose][data-detail=${choice}]`).click();
-const shot=async(page,name)=>{await page.screenshot({path:`artifacts/money-${name}.png`,animations:'disabled'});};
+const shot=async(page,name)=>{await page.waitForTimeout(300);await page.screenshot({path:`artifacts/money-${name}.png`,animations:'disabled'});};
 async function open(page,seed){
   const url=new URL(base);url.searchParams.set('qa','1');url.searchParams.set('stage','stage03');url.searchParams.set('seed',String(seed));
   await page.goto(url.href);await page.waitForFunction(()=>window.__game?.snapshot().phase==='TITLE');
@@ -62,6 +62,7 @@ try{
     for(const clue of instance.clues){
       await inspect(page,clue,points[clue.id]);
       if(clue.id==='C04')await shot(page,`rules-${correct.toLowerCase()}`);
+      if(clue.id==='C05')await shot(page,`fund-${correct.toLowerCase()}`);
       await action(page,'close');
     }
     assert.equal((await snap(page)).found.length,7);
@@ -107,9 +108,14 @@ try{
     const context=await browser.newContext({viewport:{width,height},isMobile:true,hasTouch:true});
     const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));
     const instance=await open(p,representatives[letters[[320,360,390].indexOf(width)]]);
-    const points=await paths(p);await inspect(p,instance.clues.find(c=>c.id==='C04'),points.C04);await shot(p,`record-${width}`);
-    const close=await p.locator('[data-action=close]').boundingBox();assert.ok(close.y>=0&&close.y+close.height<=height+1);
-    await p.locator('[data-action=close]').tap();await p.locator('[data-action=decision]').tap();
+    const points=await paths(p);
+    for(const id of ['C03','C04','C05']){
+      await inspect(p,instance.clues.find(c=>c.id===id),points[id]);
+      await shot(p,id==='C04'?`record-${width}`:`record-${id.toLowerCase()}-${width}`);
+      const close=await p.locator('[data-action=close]').boundingBox();assert.ok(close.y>=0&&close.y+close.height<=height+1);
+      await p.locator('[data-action=close]').tap();
+    }
+    await p.locator('[data-action=decision]').tap();
     const footer=await p.locator('.panel-footer').boundingBox();
     for(const choice of letters){const box=await p.locator(`[data-action=choose][data-detail=${choice}]`).boundingBox();assert.ok(box.y>=0&&box.y+box.height<=footer.y+1,`${width}: all choices must fit`);}
     await shot(p,`choices-${width}`);await p.locator(`[data-action=choose][data-detail=${instance.correctChoice}]`).tap();await finish(p);

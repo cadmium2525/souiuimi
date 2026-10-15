@@ -211,7 +211,9 @@ export class MoneyWorld {
     this.plant(5.3, 3.15, 1.2); this.plant(-5.35, -3.6, 0.85);
     this.box(this.room, 2.6, 0.012, 1.1, C.sage, 7.3, 0.064, 2.1, 0.07);
     for (let i = 0; i < 5; i++) this.box(this.room, 2.1, 0.005, 0.025, 0x96aa91, 7.3, 0.075, 1.7 + i * 0.2);
-    this.sign(this.room, ['よしなに商事', '会計窓口 →'], 1.0, 0.5, 5.91, 1.85, -0.8);
+    // Mount flush with the right wall's inner face, clear of the doorway trim.
+    const accountingSign = this.sign(this.room, ['よしなに商事', '会計窓口 →'], 1.0, 0.5, 5.925, 1.85, -1.3);
+    accountingSign.rotation.y = -Math.PI / 2;
   }
 
   private buildCounter(): void {
