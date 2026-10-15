@@ -79,7 +79,10 @@ test('3,000 errands vary the intended meaning through ownership and prior conver
     assert.ok(plan.signage.receipt.includes(formatMoney(plan.changeYen)));
     for (const choice of choices) {
       const ending = instance.endings[choice];
-      assert.ok(ending.explanation.includes(`${formatMoney(facts.paidYen)} − ${formatMoney(facts.purchaseYen)} = ${formatMoney(plan.changeYen)}`));
+      assert.ok(ending.explanation.length <= 120);
+      assert.equal(ending.explanation.match(/。/g)?.length, 2);
+      assert.doesNotMatch(ending.explanation, /−|実行したのは/);
+      assert.equal(ending.explanation, instance.endings[instance.correctChoice].explanation);
       assert.ok(ending.boss.includes(formatMoney(plan.changeYen)));
       assert.ok(instance.copy[`cinematic${choice}`].includes(formatMoney(plan.changeYen)));
     }

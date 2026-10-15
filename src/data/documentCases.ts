@@ -38,9 +38,9 @@ export function solveDocumentFacts(facts: DocumentCaseFacts): Choice | null {
 
 function proofFor(facts: DocumentCaseFacts, answer: Choice): string {
   const proofs: Record<Choice, string> = {
-    A: `午後の説明は3分。参加者${facts.setCount}人は全文を持っていて、説明担当者の手元メモがまだない。原本は準備室に残す。今回の「まとめる」は、短い時間で伝えられるように内容を整理すること。全文の複製や原本の搬出では、説明の準備にならない。`,
-    B: `午後は${facts.setCount}人がそれぞれページを見比べる読み合わせ。スクリーンはなく、手元で読む紙もまだ配られていない。原本は準備室に残す。今回の「まとめる」は、全${facts.pageCount}ページを人数分の資料セットにそろえること。1枚の要約や一つの原本の束では、各自が別々のページを読めない。`,
-    C: '午後は原本の保管場所を移す予定で、保管室の担当者が現物を引き取る。資料準備室には原本を残さない。今回の「まとめる」は、原本を集めて運べるようにすること。要約や配布用の複製では、原本を移せない。巨大な一束は、その作業を誇張した演出。',
+    A: '参加者は全文を持っていて、説明は3分だけ。今回の「まとめる」は、話す要点を1枚に整理すること。',
+    B: `読み合わせでは、${facts.setCount}人がそれぞれ全文を手元で使う。今回の「まとめる」は、人数分の資料セットをそろえること。`,
+    C: '午後は保管室へ原本を移す予定だった。今回の「まとめる」は、現物を全部集めて運べるようにすること。',
   };
   return proofs[answer];
 }
@@ -90,7 +90,7 @@ export function createDocumentCase(inputSeed: number): CaseInstance {
   };
   const endings = Object.fromEntries(ALL.map(choice => [choice, choice === correctChoice ? success[choice] : {
     title: wrongTitles[choice], subtitle: subtitles[choice], boss: `${topic}は、${wrongBoss[correctChoice][choice]}`,
-    player: wrongPlayer[choice], explanation: `${proof}\n実行したのは「${DOCUMENT_ACTIONS[choice]}」だった。`,
+    player: wrongPlayer[choice], explanation: proof,
   }])) as Record<Choice, Ending>;
   const choices: StageDefinition['choices'] = {
     A: { label: DOCUMENT_ACTIONS.A, description: '内容を読み込み、要点をA4の1枚に整理する。' },
@@ -149,11 +149,10 @@ export function validateDocumentCase(instance: CaseInstance): string[] {
   if (solved) {
     const proof = proofFor(facts, solved);
     for (const choice of ALL) {
-      if (!instance.endings[choice].explanation.startsWith(proof)) errors.push(`document ending ${choice} proof contradicts context`);
+      if (instance.endings[choice].explanation !== proof) errors.push(`document ending ${choice} proof contradicts context`);
       if (!instance.endings[choice].boss.includes(facts.topic)) errors.push(`document ending ${choice} dialogue contradicts facts`);
       if (!instance.endings[choice].subtitle.includes(facts.topic) || !instance.copy[`cinematic${choice}`].includes(facts.topic)) errors.push(`document action ${choice} differs from topic`);
       if (instance.choices[choice].label !== DOCUMENT_ACTIONS[choice]) errors.push(`document choice ${choice} label differs from action`);
-      if (choice !== solved && !instance.endings[choice].explanation.endsWith(`実行したのは「${DOCUMENT_ACTIONS[choice]}」だった。`)) errors.push(`document ending ${choice} differs from performed action`);
     }
   }
   if (!instance.choices.B.description.includes(`${facts.pageCount}ページ`) || !instance.choices.B.description.includes(`${facts.setCount}人分`)

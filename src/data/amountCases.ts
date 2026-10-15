@@ -4,7 +4,7 @@ import type { AmountCaseFacts, CaseInstance, Choice, Ending, StageDefinition } f
 const ACTIVE: Choice[] = ['A', 'B'];
 const ALL: Choice[] = ['A', 'B', 'C'];
 /** A speaker's mistaken usage does not change the definition. */
-export const WEAK_DEFINITION = '辞書上、金額につく「弱」は基準より少し少ない意味。「1万円弱」は1万円を少し下回る額を表す。';
+export const WEAK_DEFINITION = '「1万円弱」は本来、1万円より少し少ない額。';
 const DICTIONARY_MEMO = '社内文書の校正メモ\n金額につく「弱」は、基準額より少し少ないこと。\n「強」は、基準額より少し多いこと。\n参照：小学館『デジタル大辞泉』';
 const COUNTER = '催事立替金の受取窓口\n封筒に用途を書いてお持ちください。\n金額を確認して、準備した品をお渡しします。\n余った現金はその場でお返しします。';
 const PURPOSES = ['備品代', '会場代', '印刷代', '装飾代', '案内板代', '展示台代'] as const;
@@ -22,24 +22,16 @@ class Random {
   }
   int(min: number, max: number): number { return min + Math.floor(this.next() * (max - min + 1)); }
   pick<T>(items: readonly T[]): T { return items[this.int(0, items.length - 1)]; }
-  shuffle<T>(items: readonly T[]): T[] {
-    const result = [...items];
-    for (let i = result.length - 1; i > 0; i--) {
-      const j = this.int(0, i);
-      [result[i], result[j]] = [result[j], result[i]];
-    }
-    return result;
-  }
 }
 
 export function amountYen(value: number): string { return `${value.toLocaleString('ja-JP')}円`; }
 
-/** Read the boss's own two conversations. No identity lookup or declared answer is needed. */
+/** Combine one past request with its separate, approved payment record. */
 export function solveAmountFacts(facts: AmountCaseFacts): Choice | null {
   if (!/^10月([1-9]|[12]\d|3[01])日$/.test(facts.today) || !facts.purpose || facts.speakerName !== '部長') return null;
   if (!Number.isInteger(facts.baseYen) || !Number.isInteger(facts.lowerYen) || !Number.isInteger(facts.upperYen)
       || facts.lowerYen <= 0 || facts.lowerYen >= facts.baseYen || facts.upperYen <= facts.baseYen) return null;
-  if (facts.history.length !== 2 || new Set(facts.history.map(row => row.occasion)).size !== 2) return null;
+  if (facts.history.length !== 1) return null;
   if (facts.history.some(row => !row.occasion || !Number.isInteger(row.baseYen) || !Number.isInteger(row.actualYen)
       || row.baseYen <= 0 || row.actualYen <= 0 || row.actualYen === row.baseYen)) return null;
   if (facts.history.every(row => row.actualYen < row.baseYen)) return 'A';
@@ -47,16 +39,12 @@ export function solveAmountFacts(facts: AmountCaseFacts): Choice | null {
   return null;
 }
 
-function pastConversation(facts: AmountCaseFacts, index: number): string {
-  const row = facts.history[index];
-  return `${row.occasion}のチャット\n${facts.speakerName}「${amountYen(row.baseYen)}弱を持ってきて」\nあなた「${amountYen(row.actualYen)}でよろしいですか？」\n${facts.speakerName}「うん、それでお願い」`;
-}
-
 function clueBodies(facts: AmountCaseFacts): Record<string, string> {
+  const previous = facts.history[0];
   return {
     C01: `${facts.today}・${facts.speakerName}からの伝言\n「今日の${facts.purpose}、1万円弱を封筒に入れて持ってきて」`,
-    C02: pastConversation(facts, 0),
-    C03: pastConversation(facts, 1),
+    C02: `${previous.occasion}のチャット\n${facts.speakerName}「${amountYen(previous.baseYen)}弱を持ってきて」`,
+    C03: `${previous.occasion}・立替金の受取控え\n受取額：${amountYen(previous.actualYen)}\n確認欄：${facts.speakerName}「この金額でお願いします」\n受渡済み。`,
     C04: `立替金用の封筒\n封筒A：${amountYen(facts.lowerYen)}\n封筒B：${amountYen(facts.upperYen)}\nどちらも未開封。用途の欄は空欄。`,
     C05: COUNTER,
     C06: `経理からの連絡\n「${facts.speakerName}からは『1万円弱』と聞いています。\n現金は二通り用意しました。使わなかった封筒は、そのまま戻してください」`,
@@ -65,12 +53,10 @@ function clueBodies(facts: AmountCaseFacts): Record<string, string> {
 }
 
 function proofFor(facts: AmountCaseFacts, answer: Choice): string {
-  const past = facts.history.map(row => `${row.occasion}では「${amountYen(row.baseYen)}弱」に${amountYen(row.actualYen)}を確認し、${facts.speakerName}が了承していた`).join('。');
   const reading = answer === 'A'
-    ? 'どちらも基準額より少なく、辞書の意味どおりの使い方だった。'
-    : 'どちらも基準額より多かった。部長は「弱」を取り違えて使っていた。言葉本来の意味が変わったわけではない。';
-  const selected = amountYen(answer === 'A' ? facts.lowerYen : facts.upperYen);
-  return `${WEAK_DEFINITION}\n今回の頼みは${facts.purpose}。${past}。${reading}\n二通の封筒から今回の意図を予測するなら${selected}。「弱」という言葉だけで、円単位の金額まで決まるわけではない。`;
+    ? `前回の受取額も基準未満で、今回の意図は${amountYen(facts.lowerYen)}だった。`
+    : `部長は前回も「弱」を少し多い額のつもりで使っており、今回は${amountYen(facts.upperYen)}を想定していた。`;
+  return `${WEAK_DEFINITION}${reading}`;
 }
 
 export function createAmountCase(inputSeed: number): CaseInstance {
@@ -80,12 +66,10 @@ export function createAmountCase(inputSeed: number): CaseInstance {
   const today = `10月${random.int(3, 28)}日`;
   const purpose = random.pick(PURPOSES);
   const usage = random.pick(ACTIVE);
-  const occasions = random.shuffle(PAST_OCCASIONS).slice(0, 2);
-  const bases = random.shuffle([3000, 5000, 8000, 15000, 20000]).slice(0, 2);
-  const history = bases.map((baseYen, index) => {
-    const difference = random.int(1, Math.min(5, baseYen / 1000)) * 100;
-    return { occasion: occasions[index], baseYen, actualYen: baseYen + (usage === 'A' ? -difference : difference) };
-  });
+  const occasion = random.pick(PAST_OCCASIONS);
+  const pastBaseYen = random.pick([3000, 5000, 8000, 15000, 20000]);
+  const difference = random.int(1, Math.min(5, pastBaseYen / 1000)) * 100;
+  const history = [{ occasion, baseYen: pastBaseYen, actualYen: pastBaseYen + (usage === 'A' ? -difference : difference) }];
   const baseYen = 10000, lowerYen = random.int(93, 99) * 100, upperYen = random.int(101, 107) * 100;
   const facts: AmountCaseFacts = { kind: 'amount', today, purpose, speakerName: '部長', baseYen, lowerYen, upperYen, requiredYen: 0, history };
   const correctChoice = solveAmountFacts(facts)!;
@@ -106,7 +90,7 @@ export function createAmountCase(inputSeed: number): CaseInstance {
       title: choice === 'A' ? '言葉どおり。でも、用意は足りず。' : '少し多め。でも、今回は未満。',
       subtitle: `${amountYen(delivered)}を届けた`, boss,
       player: choice === 'A' ? '次は金額そのものを確認させてください。' : '部長は、前にも少し少ない額を指していましたね。',
-      explanation: `${proof}\n選んだ${amountYen(delivered)}は、今回部長が想定していた${required}より${amountYen(Math.abs(delivered - facts.requiredYen))}${delivered < facts.requiredYen ? '少なかった' : '多かった'}。`,
+      explanation: proof,
     }];
   })) as Record<Choice, Ending>;
   const choices = {
@@ -117,7 +101,7 @@ export function createAmountCase(inputSeed: number): CaseInstance {
   const bodies = clueBodies(facts);
   const stage: StageDefinition = {
     ...STAGE04, start: { ...STAGE04.start }, choiceIds: [...ACTIVE], choices,
-    clues: STAGE04.clues.map(clue => ({ ...clue, body: bodies[clue.id], title: clue.id === 'C02' ? `${history[0].occasion}のチャット` : clue.id === 'C03' ? `${history[1].occasion}のチャット` : clue.title })), endings,
+    clues: STAGE04.clues.map(clue => ({ ...clue, body: bodies[clue.id], title: clue.id === 'C02' ? `${occasion}のチャット` : clue.title })), endings,
     cinematicSeconds: { ...STAGE04.cinematicSeconds },
     copy: {
       ...STAGE04.copy, correctChoice, successLabel: '今回の意図を予測',
@@ -134,7 +118,7 @@ export function createAmountCase(inputSeed: number): CaseInstance {
       signage: {
         request: `${today}\n${purpose}\n部長の伝言`,
         assignments: `${history[0].occasion}\n部長とのチャット`,
-        history: `${history[1].occasion}\n部長とのチャット`,
+        history: `${occasion}\n立替金の受取控え`,
         envelopes: `A ${amountYen(lowerYen)}\nB ${amountYen(upperYen)}`,
         counter: '催事立替金\n受取窓口', oldMemo: '経理から\n封筒のご案内', dictionary: '校正メモ\n弱・強',
       },
@@ -156,15 +140,17 @@ export function validateAmountCase(instance: CaseInstance): string[] {
   if (facts.baseYen !== 10000 || facts.lowerYen < 9300 || facts.lowerYen > 9900 || facts.upperYen < 10100 || facts.upperYen > 10700) errors.push('amount candidate range invalid');
   if (!plan || plan.baseYen !== facts.baseYen || plan.lowerYen !== facts.lowerYen || plan.upperYen !== facts.upperYen || plan.requiredYen !== facts.requiredYen || plan.requestId !== facts.purpose) errors.push('amount plan differs from facts');
   if (solved && facts.requiredYen !== (solved === 'A' ? facts.lowerYen : facts.upperYen)) errors.push('amount required amount contradicts inferred usage');
-  if (facts.history.length === 2) {
+  if (facts.history.length === 1) {
     const bodies = clueBodies(facts);
     for (const clue of instance.clues) if (clue.body !== bodies[clue.id]) errors.push(`${clue.id} text contradicts amount facts`);
+    if (instance.clues.find(clue => clue.id === 'C02')?.title !== `${facts.history[0].occasion}のチャット`
+        || instance.clues.find(clue => clue.id === 'C03')?.title !== '立替金の受取控え') errors.push('amount evidence roles differ');
   }
   if (plan && (!plan.signage.request?.includes(facts.purpose) || !plan.signage.envelopes?.includes(amountYen(facts.lowerYen)) || !plan.signage.envelopes?.includes(amountYen(facts.upperYen)))) errors.push('amount signage differs from facts');
   if (solved) {
     const proof = proofFor(facts, solved);
     for (const choice of ALL) {
-      if (!instance.endings[choice].explanation.startsWith(proof)) errors.push(`amount ending ${choice} proof contradicts records or dictionary`);
+      if (instance.endings[choice].explanation !== proof || proof.length > 120) errors.push(`amount ending ${choice} proof contradicts records or dictionary`);
       if (choice !== 'C' && (!instance.endings[choice].boss.includes(facts.purpose) || !instance.endings[choice].boss.includes(amountYen(facts.requiredYen)))) errors.push(`amount ending ${choice} dialogue contradicts facts`);
     }
     if (solved === 'B' && (!instance.endings.B.boss.includes('少し超えるつもりで「弱」と言ってた') || !instance.endings.A.boss.includes('君の日本語の解釈は合っている'))) errors.push('amount mistaken usage must be acknowledged by its speaker');

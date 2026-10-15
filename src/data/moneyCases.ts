@@ -45,13 +45,13 @@ function presentation(facts: MoneyCaseFacts) {
     C: '買い出し前のグループチャット\n同僚「使い切らなかった分は、売店の本棚づくりの募金箱に入れるのはどう？」\n参加者全員「賛成です」\n上司「じゃあ、それでお願いしよう」',
   };
   const intention: Record<Choice, string> = {
-    A: '今回の買い出しは会社の仮払い。上司は外出するため、自分への手渡しは不要だと伝えていた。残りのお金は、レシートと一緒に会社の経理へ精算する。',
-    B: '今回の買い出しは上司の私費。出発前に、残った分を買い出しへのお礼にすると話していた。「お釣りはいいよ」は、その約束どおり受け取ってよいという意味だった。',
-    C: '今回のお金は参加者で出し合ったもの。買い出し前に、残った分を本棚づくりの募金に回すと全員で決めていた。「お釣りはいいよ」は、上司に返さず、その約束を進めてよいという意味だった。',
+    A: '会社の仮払いなので、残りは経理で精算するお金だった。「いいよ」は、外出中の上司への手渡しは不要という意味。',
+    B: '上司の私費で、残りは買い出しのお礼にする約束だった。「いいよ」は、そのまま受け取ってよいという意味。',
+    C: 'みんなで出したお金の残りは、募金に回す約束だった。「いいよ」は、上司に返さず約束どおり募金してよいという意味。',
   };
   // Invalid facts are reported by validation. These fallbacks keep diagnostics readable.
   const choice = correct ?? 'A';
-  const proof = `${intention[choice]}\n${formatMoney(facts.paidYen)} − ${formatMoney(facts.purchaseYen)} = ${money}。今回の行動は「${ACTIONS[choice]}」。`;
+  const proof = intention[choice];
   const bodies: Record<string, string> = {
     C01: `${facts.envelopeName}\n${facts.today}\n${facts.occasion}\n預かった現金：${formatMoney(facts.paidYen)}`,
     C02: `${facts.today}\nよしなに売店\n購入合計：${formatMoney(facts.purchaseYen)}\nお預かり：${formatMoney(facts.paidYen)}\n釣銭：${money}`,
@@ -76,7 +76,7 @@ function presentation(facts: MoneyCaseFacts) {
     subtitle: `残り${money}を${ACTIONS[action]}`,
     boss: `残り${money}のことだけど……。${wrongBoss[choice][action]}`,
     player: '「いいよ」の前に、どんな話をしていたか思い出せばよかった……。',
-    explanation: `${proof}\n実行したのは「${ACTIONS[action]}」だった。`,
+    explanation: proof,
   }])) as Record<Choice, Ending>;
   const signage: Record<string, string> = {
     envelope: `${facts.envelopeName}\n${formatMoney(facts.paidYen)}`,

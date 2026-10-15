@@ -44,6 +44,7 @@ export interface AmountCasePlan {
 export interface AmountCaseFacts {
   kind: 'amount'; today: string; purpose: string; speakerName: string; baseYen: number;
   lowerYen: number; upperYen: number; requiredYen: number;
+  /** One past event, shown as a request and a separate approved receipt. */
   history: Array<{ occasion: string; baseYen: number; actualYen: number }>;
 }
 export interface DocumentCasePlan {

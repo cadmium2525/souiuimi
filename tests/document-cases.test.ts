@@ -95,8 +95,10 @@ test('3,000 document cases use a coherent job purpose, recipient and original ha
       assert.ok(ending.subtitle.includes(facts.topic));
       assert.ok(ending.boss.includes(facts.topic));
       assert.ok(ending.explanation.includes('今回の「まとめる」は'));
-      if (choice !== independentlyExpected) assert.ok(ending.explanation.endsWith(`実行したのは「${DOCUMENT_ACTIONS[choice]}」だった。`));
-      if (independentlyExpected === 'C') assert.ok(ending.explanation.includes('巨大な一束は、その作業を誇張した演出'));
+      assert.ok(ending.explanation.length <= 120);
+      assert.equal(ending.explanation.match(/。/g)?.length, 2);
+      assert.doesNotMatch(ending.explanation, /実行したのは|誇張した演出/);
+      assert.equal(ending.explanation, instance.endings[independentlyExpected].explanation);
     }
     assert.doesNotMatch(JSON.stringify({ clues: instance.clues, copy: instance.copy, endings: instance.endings, choices: instance.choices, signage: plan.signage }), opaqueCodes);
     answerCounts.set(independentlyExpected, (answerCounts.get(independentlyExpected) ?? 0) + 1);

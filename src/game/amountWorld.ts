@@ -216,7 +216,7 @@ export class AmountWorld {
     // C02 current shift sheet, C03 archival records on separate shelves.
     this.shelf(-4.8, -2, 1.3, 0.9); this.box(this.room, 1.0, 0.035, 0.7, C.teal, -4.8, 0.99, -2); this.sign(this.room, this.lines('assignments', ['以前のチャット', '部長とのやりとり']), 0.92, 0.62, -4.8, 1.011, -2, true);
     this.shelf(-4.9, 1.6, 1.3, 0.9);
-    this.box(this.room, 1.02, 0.07, 0.72, C.blush, -4.9, 1.0, 1.6); this.sign(this.room, this.lines('history', ['過去の立替記録', '受付保管']), 0.95, 0.65, -4.9, 1.04, 1.6, true);
+    this.box(this.room, 1.02, 0.07, 0.72, C.blush, -4.9, 1.0, 1.6); this.sign(this.room, this.lines('history', ['立替金の受取控え', '確認済み']), 0.95, 0.65, -4.9, 1.04, 1.6, true);
     this.box(this.room, 0.045, 0.01, 0.64, C.wood, -4.9, 1.047, 1.6);
     // C05 a counter-side clipboard, C06 previous-day memo.
     this.shelf(4.5, -1.9, 1.06, 0.9); this.box(this.room, 0.75, 0.03, 0.66, C.sage, 4.5, 1.0, -1.9); this.sign(this.room, this.lines('counter', ['備品受取案内', '受付時間']), 0.67, 0.57, 4.5, 1.019, -1.9, true);

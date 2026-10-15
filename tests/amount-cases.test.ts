@@ -24,7 +24,7 @@ test('amount cases normalize seeds, are deterministic, and freeze generated case
   assert.doesNotMatch(caseText(STAGE04), forbidden, 'original fixture is natural prose too');
 });
 
-test('3,000 amount cases reveal either intention through the boss’s own two conversations, with no administrative lookup', () => {
+test('3,000 amount cases combine a past request and approved receipt without repeated hints', () => {
   const answerCounts = new Map<Choice, number>();
   const purposeAnswers = new Map<string, Set<Choice>>();
   const occasionAnswers = new Map<string, Set<Choice>>();
@@ -70,16 +70,18 @@ test('3,000 amount cases reveal either intention through the boss’s own two co
     assert.ok(plan.signage.envelopes.includes(amountYen(facts.lowerYen)));
     assert.ok(plan.signage.envelopes.includes(amountYen(facts.upperYen)));
     assert.deepEqual(Object.keys(plan.signage).sort(), ['request', 'assignments', 'history', 'envelopes', 'counter', 'oldMemo', 'dictionary'].sort());
-    assert.equal(facts.history.length, 2);
-    assert.equal(new Set(facts.history.map(row => row.occasion)).size, 2);
-    for (const [index, row] of facts.history.entries()) {
-      assert.notEqual(row.baseYen, 10000, 'past conversations do not state the current amount');
-      assert.equal(row.actualYen < row.baseYen, instance.correctChoice === 'A');
-      assert.equal(Object.hasOwn(row, 'speaker'), false);
-      const clue = instance.clues[index + 1];
-      assert.equal(clue.title, `${row.occasion}のチャット`);
-      assert.equal(clue.body, `${row.occasion}のチャット\n部長「${amountYen(row.baseYen)}弱を持ってきて」\nあなた「${amountYen(row.actualYen)}でよろしいですか？」\n部長「うん、それでお願い」`);
-    }
+    assert.equal(facts.history.length, 1);
+    const row = facts.history[0], request = instance.clues[1], receipt = instance.clues[2];
+    assert.notEqual(row.baseYen, 10000, 'the past request does not reveal the current amount');
+    assert.equal(row.actualYen < row.baseYen, instance.correctChoice === 'A');
+    assert.equal(request.title, `${row.occasion}のチャット`);
+    assert.equal(request.body, `${row.occasion}のチャット\n部長「${amountYen(row.baseYen)}弱を持ってきて」`);
+    assert.equal(receipt.title, '立替金の受取控え');
+    assert.ok(receipt.body.includes(row.occasion));
+    assert.ok(receipt.body.includes(`受取額：${amountYen(row.actualYen)}`));
+    assert.ok(receipt.body.includes('部長「この金額でお願いします」'));
+    assert.ok(!request.body.includes(amountYen(row.actualYen)), 'request alone does not reveal the approved amount');
+    assert.doesNotMatch(receipt.body, /弱|持ってきて/, 'receipt contributes the actual amount, without repeating the request');
     assert.ok(instance.clues[0].body.includes(facts.purpose));
     assert.ok(instance.clues[0].body.includes(facts.today));
     assert.ok(instance.clues[6].body.includes('「弱」は、基準額より少し少ない'));
@@ -93,10 +95,10 @@ test('3,000 amount cases reveal either intention through the boss’s own two co
       assert.ok(ending.boss.includes(facts.purpose));
       assert.ok(ending.boss.includes(amountYen(facts.requiredYen)));
       assert.ok(ending.explanation.startsWith(WEAK_DEFINITION));
-      assert.ok(ending.explanation.includes('「弱」という言葉だけで、円単位の金額まで決まるわけではない'));
-      for (const row of facts.history) assert.ok(ending.explanation.includes(`${row.occasion}では「${amountYen(row.baseYen)}弱」に${amountYen(row.actualYen)}を確認し、部長が了承していた`));
-      if (choice !== instance.correctChoice) assert.ok(ending.explanation.includes(amountYen(Math.abs(facts.lowerYen - facts.upperYen))));
-      if (instance.correctChoice === 'B') assert.ok(ending.explanation.includes('言葉本来の意味が変わったわけではない'));
+      assert.ok(ending.explanation.includes(amountYen(facts.requiredYen)));
+      assert.ok(ending.explanation.length <= 120, 'explanation remains brief on a phone');
+      assert.equal(ending.explanation.split('。').filter(Boolean).length, 2);
+      assert.ok(!ending.explanation.includes(row.occasion), 'full evidence remains in the optional review');
     }
     if (instance.correctChoice === 'B') {
       assert.ok(instance.endings.B.boss.includes('少し超えるつもりで「弱」と言ってた'));
@@ -110,25 +112,25 @@ test('3,000 amount cases reveal either intention through the boss’s own two co
     }
     assert.equal(instance.choices.C.label, '');
   }
-  assert.equal(uniqueFacts.size, 3000); assert.equal(dates.size, 26);
+  assert.ok(uniqueFacts.size > 2900, 'separate seeds still produce varied requests'); assert.equal(dates.size, 26);
   for (const choice of choices) assert.ok((answerCounts.get(choice) ?? 0) > 1000);
   for (const map of [purposeAnswers, occasionAnswers, lowerAnswers, upperAnswers]) {
     for (const outcomes of map.values()) assert.deepEqual(outcomes, new Set(choices), 'purpose, occasion and candidate amounts must not determine the answer');
   }
 });
 
-test('amount solver rejects missing, duplicated or contradictory conversations and ignores declared requiredYen', () => {
+test('amount solver requires one valid request/receipt event and ignores declared requiredYen', () => {
   const instance = createAmountCase(73), facts = instance.facts as AmountCaseFacts;
-  const [first, second] = facts.history;
+  const [first] = facts.history;
   assert.equal(solveAmountFacts({ ...facts, history: [] }), null);
-  assert.equal(solveAmountFacts({ ...facts, history: [first] }), null);
+  assert.equal(solveAmountFacts({ ...facts, history: [first] }), instance.correctChoice);
   assert.equal(solveAmountFacts({ ...facts, history: [...facts.history, first] }), null);
-  const contradict = { ...first, actualYen: first.baseYen - (first.actualYen - first.baseYen) };
-  assert.equal(solveAmountFacts({ ...facts, history: [contradict, second] }), null);
+  const opposite = { ...first, actualYen: first.baseYen - (first.actualYen - first.baseYen) };
+  assert.notEqual(solveAmountFacts({ ...facts, history: [opposite] }), instance.correctChoice);
   for (const changed of [
     { ...first, actualYen: first.baseYen }, { ...first, occasion: '' },
-    { ...first, occasion: second.occasion }, { ...first, baseYen: 0 }, { ...first, actualYen: 1.5 },
-  ]) assert.equal(solveAmountFacts({ ...facts, history: [changed, second] }), null);
+    { ...first, baseYen: 0 }, { ...first, actualYen: 1.5 },
+  ]) assert.equal(solveAmountFacts({ ...facts, history: [changed] }), null);
   assert.equal(solveAmountFacts({ ...facts, speakerName: '知らない人' }), null);
   assert.equal(solveAmountFacts({ ...facts, requiredYen: -5 }), instance.correctChoice, 'the boss’s actual past usage determines the intended side');
 });

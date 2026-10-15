@@ -47,6 +47,11 @@ test('3,000 office jobs resolve from future use, furniture and site context', ()
     assert.match(instance.clues[4].body, /建物ごと運びます/);
     assert.ok(instance.clues[1].body.includes(facts.occasion));
     assert.equal(instance.correctChoice, { meeting: 'A', 'empty-space': 'B', 'next-site': 'C' }[facts.nextUse]);
+    for (const ending of Object.values(instance.endings)) {
+      assert.ok(ending.explanation.length <= 120);
+      assert.equal(ending.explanation.match(/。/g)?.length, 2);
+      assert.doesNotMatch(ending.explanation, /実行したのは/);
+    }
     assert.doesNotMatch(caseText(instance), forbidden);
     for (const clue of instance.clues) {
       assert.equal(Object.hasOwn(clue, 'thought'), false);
@@ -58,7 +63,7 @@ test('3,000 office jobs resolve from future use, furniture and site context', ()
   for (const answersForCount of counts.values()) assert.equal(answersForCount.size, 3, 'visitor count does not reveal the answer');
 });
 
-test('3,000 station jobs use the speaker’s past words with synchronized clocks', () => {
+test('3,000 station jobs combine one previous chat and its scheduled meeting time with synchronized clocks', () => {
   const answers = new Map<Choice, number>(), outcomes = new Set<string>(), gaps = new Set<number>();
   const hours = new Map<number, Set<Choice>>();
   let transportShortcutFailures = 0;
@@ -76,6 +81,17 @@ test('3,000 station jobs use the speaker’s past words with synchronized clocks
     assert.equal(plan.referenceOffset, 0);
     assert.deepEqual(plan.displayedChoices, plan.arrivalMinutes);
     assert.deepEqual(choices.map(c => plan.arrivalMinutes[c] - facts.spokenHour * 60), [-10, 5, 9]);
+    assert.equal(facts.previousMeetings.length, 1);
+    const previous = facts.previousMeetings[0];
+    assert.notEqual(previous.spokenHour, facts.spokenHour);
+    const chat = instance.clues.find(clue => clue.id === 'C02')!.body;
+    const notebook = instance.clues.find(clue => clue.id === 'C04')!.body;
+    assert.ok(chat.includes(previous.occasion));
+    assert.ok(chat.includes(`${previous.spokenHour}時10分前に集合ね`));
+    assert.ok(!chat.includes(formatCaseTime(previous.arrivedMinutes)));
+    assert.ok(notebook.includes(previous.occasion));
+    assert.ok(notebook.includes(`集合予定：${formatCaseTime(previous.arrivedMinutes)}`));
+    assert.doesNotMatch(notebook, /時10分前|合流した時刻|到着/);
     for (const record of facts.previousMeetings) assert.equal(record.arrivedMinutes - record.spokenHour * 60, plan.meetingMinutes - facts.spokenHour * 60);
     assert.equal(plan.deliveryOpen, plan.departureMinutes + plan.travelMinutes);
     assert.equal(plan.deliveryClose, plan.deliveryOpen + 2);
@@ -89,6 +105,9 @@ test('3,000 station jobs use the speaker’s past words with synchronized clocks
     for (const choice of choices) {
       assert.ok(instance.choices[choice].label.includes(formatCaseTime(plan.arrivalMinutes[choice])));
       assert.ok(instance.endings[choice].explanation.includes(formatCaseTime(plan.meetingMinutes)));
+      assert.ok(instance.endings[choice].explanation.length <= 120);
+      assert.equal(instance.endings[choice].explanation.match(/。/g)?.length, 2);
+      assert.doesNotMatch(instance.endings[choice].explanation, /選んだ|時計のずれ/);
       const outcome = plan.outcomes[choice], arrival = plan.arrivalMinutes[choice];
       if (outcome === 'meet') assert.equal(arrival, plan.meetingMinutes);
       if (outcome === 'early') assert.ok(arrival < plan.meetingMinutes);
@@ -116,14 +135,17 @@ test('solvers reject contradictory context and validators detect altered records
   const facts = station.facts, plan = station.stationPlan!;
   assert.equal(solveStationFacts({ ...facts, previousMeetings: [] }, plan), null);
   const conflicting = structuredClone(facts);
-  conflicting.previousMeetings[1].arrivedMinutes += 1;
+  conflicting.previousMeetings[0].arrivedMinutes += 1;
   assert.equal(solveStationFacts(conflicting, plan), null);
+  const duplicate = structuredClone(facts);
+  duplicate.previousMeetings.push({ ...duplicate.previousMeetings[0] });
+  assert.equal(solveStationFacts(duplicate, plan), null);
   assert.equal(solveStationFacts(facts, { ...plan, plazaOffset: 5 }), null);
   assert.equal(solveStationFacts(facts, { ...plan, displayedChoices: { A: plan.meetingMinutes, B: plan.meetingMinutes, C: plan.meetingMinutes } }), null);
   const missing = structuredClone(station);
   if (missing.facts.kind !== 'station') throw new Error('wrong facts');
   missing.facts.previousMeetings = [];
-  assert.ok(validateCase(missing).some(error => error.includes('two previous')));
+  assert.ok(validateCase(missing).some(error => error.includes('one previous')));
   const badStation = structuredClone(station);
   badStation.stationPlan!.deliveryClose = badStation.stationPlan!.deliveryOpen - 1;
   badStation.copy.correctChoice = 'wrong';

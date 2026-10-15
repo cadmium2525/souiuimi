@@ -13,7 +13,7 @@ const pass=name=>{results.push(name);console.log(`PASS ${name}`);};
 const snap=p=>p.evaluate(()=>window.__game.snapshot());
 const frame=p=>p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 const seek=async(p,t)=>{await p.evaluate(t=>window.__game.cinematic(t),t);await frame(p);};
-const finish=async p=>{await seek(p,9.9);await p.waitForFunction(()=>window.__game.snapshot().phase==='ENDING');};
+const finish=async p=>{await seek(p,9.9);await p.waitForFunction(()=>window.__game.snapshot().phase==='ENDING');await frame(p);};
 const action=(p,a)=>p.locator(`[data-action=${a}]`).first().click();
 const choose=(p,c)=>p.locator(`[data-action=choose][data-detail=${c}]`).click();
 const shot=(p,n)=>p.screenshot({path:`artifacts/amount-${n}.png`,animations:'disabled'});
@@ -41,7 +41,7 @@ try{
     const seed=representatives[correct],c=await open(p,seed),original=JSON.stringify(c),points=await paths(p);
     assert.equal(Object.keys(points).length,7);await shot(p,`explore-${correct.toLowerCase()}`);
     const before=await snap(p);await p.keyboard.down('KeyA');await p.waitForTimeout(230);await p.keyboard.up('KeyA');assert.ok(Math.hypot((await snap(p)).x-before.x,(await snap(p)).z-before.z)>.05);
-    for(const clue of c.clues){await inspect(p,clue,points[clue.id]);if(clue.id==='C03')await shot(p,`history-${correct.toLowerCase()}`);await action(p,'close');}
+    for(const clue of c.clues){await inspect(p,clue,points[clue.id]);if(clue.id==='C02')await shot(p,`request-${correct.toLowerCase()}`);if(clue.id==='C03')await shot(p,`history-${correct.toLowerCase()}`);await action(p,'close');}
     assert.equal((await snap(p)).found.length,7);assert.equal(JSON.stringify(await p.evaluate(()=>window.__game.instance())),original);
     for(const choice of [correct,...letters.filter(x=>x!==correct)]){
       await action(p,'decision');assert.equal(await p.locator('.choice-button').count(),2);assert.equal(await p.locator('[data-action=choose][data-detail=C]').count(),0);
