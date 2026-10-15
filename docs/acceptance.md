@@ -16,6 +16,9 @@
 | `npm run test:random` | 13項目成功 | ケース1/2の全ABC、新しいチャット/手帳の原文、集合の全4結果、短い解説、320/360/390幅、再挑戦と新依頼、例外0 |
 | 他4ケースの結果画像 | 9画面を目視 | 320/390幅の8結果と資料ケースの不正解。短い解説全文を読め、固定footerのボタンに重なりなし、例外0 |
 | `npm run test:deployment` | 6項目成功 | 最終ビルドをサブパスで起動し、全5舞台・上司画像・2択/3択・WebGL代替表示を確認 |
+| GitHub Actions | build/deploy成功 | [公開ワークフロー](https://github.com/cadmium2525/souiuimi/actions/runs/38763831151)。配信元 `64f3c4d7131b54fe39566af468dd141274dba984` |
+| 公開版の一致 | 確認済み | HTML参照の `index-C8Rmnub2.js` とworker版 `23130244f3b6c8cc` が最終ビルドと一致 |
+| `npm run test:pwa:live` | 公開HTTPSで4項目成功 | 通常Chrome、390/320/800幅、インストール適合性エラー0、offline再起動・ケース5を結末まで完走・通信復帰、欠落資産/例外0 |
 
 画像は `artifacts/amount-request-b.png`、`amount-record-320.png`、`amount-ending-390.png`、`short-ending-*.png`、結果は `amount-results.json` と `short-ending-review.json` に保存しています。WindowsのChrome、Playwright、ソフトウェアWebGLで確認しました。実機スマートフォン・Safari・実機GPU性能は未確認です。
 
