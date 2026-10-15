@@ -13,10 +13,17 @@ GitHub Pagesの公開先は https://cadmium2525.github.io/souiuimi/ 。指定リ
 | `npm run test:pwa` | 8項目成功 | 通常訪問でmanifest・PNG寸法・MIME・worker scope・全資産保存、全5ケースのoffline再起動と会話画像、ケース5の14秒演出から結末・次の依頼、通信復帰 |
 | PWA更新 | 専用テスト内で確認 | 探索中は更新待ちで時計が進む。タイトルの操作で1回だけ再読込、別タブのゲームを維持。3版目で不要な旧cacheを整理し、更新後もoffline起動 |
 | `npm run test:deployment` | 6項目成功 | `/souiuimi/` で全5ケース・画像・2択/3択、欠落リクエストなし、WebGL代替表示 |
+| GitHub Actions | build/deployとも成功 | [公開ワークフロー](https://github.com/cadmium2525/souiuimi/actions/runs/38704956055)。配信元コミット `695b15d70b2a571a826a2cd7865c633429a946f8` |
+| `npm run test:pwa:live` | 公開HTTPSサイトで4項目成功 | 専用の通常Chromeプロファイルでmanifest/全サイズのアイコン/worker scope。インストール適合性エラー0、実際のインストール案内表示、390/320/800pxで主要操作との重なりなし |
+| 公開版のofflineプレイ | 実時間で完走 | 保存後に通信を切って再読込→ケース5→上司画像→3択→Cの14秒演出→結末→通信復帰。実行時例外・欠落リクエスト0 |
 
 localhostのsecure context、Chrome 155.0.8059.40、ソフトウェアWebGLで確認しました。PWAテストは診断APIを使わず実際のボタン操作と経過時間で進めています。私的な自動化コンテキストのCDPではmanifestエラーはなく、インストール制約は `in-incognito` のみでした。実機へのホーム画面追加、iOS/Safari、実機GPUのfpsは未確認です。
 
+その後、専用の通常Chromeプロファイルで公開サイトを確認し、CDPのインストール適合性エラーが空であること、実際に「アプリを入れる」が表示されることを確認しました。OSへのアプリ追加は実行していません。検証用の一時プロファイルは終了後に削除しました。
+
 結果は `artifacts/pwa-results.json`、代表画像は `artifacts/pwa-online-title-mobile.png`、`pwa-offline-case5-ending.png`、`pwa-update-ready-mobile.png` に保存しています。
+
+公開版の結果は `artifacts/pwa-live-results.json`、画像は `artifacts/pwa-live-title-320.png`、`pwa-live-offline-ending.png` です。
 
 以下は過去版の検証履歴です。
 
