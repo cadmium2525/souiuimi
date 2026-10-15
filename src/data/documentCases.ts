@@ -4,11 +4,19 @@ import type { CaseInstance, Choice, DocumentCaseFacts, Ending, StageDefinition }
 const ALL: Choice[] = ['A', 'B', 'C'];
 const PAGE_COUNTS = [120, 160, 200, 240, 280, 320];
 const TOPICS = ['研修資料', '説明資料', '商品資料', '調査資料', '事業資料', '活動資料'];
-const CONTEXT: Record<Choice, Pick<DocumentCaseFacts, 'use' | 'audience' | 'originals'>> = {
-  A: { use: 'short-talk', audience: 'speaker', originals: 'stay' },
-  B: { use: 'individual-reading', audience: 'attendees', originals: 'stay' },
-  C: { use: 'archive-transfer', audience: 'storage-staff', originals: 'transfer' },
-};
+type DocumentContext = Pick<DocumentCaseFacts, 'meeting' | 'distribution' | 'record'>;
+
+/** All combinations occur: no one status is an answer key. */
+export const DOCUMENT_CONTEXTS: readonly DocumentContext[] = [
+  { meeting: 'upcoming', distribution: 'sent', record: 'master-annotations' },
+  { meeting: 'upcoming', distribution: 'pending', record: 'master-annotations' },
+  { meeting: 'upcoming', distribution: 'sent', record: 'separate-minutes' },
+  { meeting: 'upcoming', distribution: 'pending', record: 'separate-minutes' },
+  { meeting: 'finished', distribution: 'sent', record: 'master-annotations' },
+  { meeting: 'finished', distribution: 'pending', record: 'master-annotations' },
+  { meeting: 'finished', distribution: 'sent', record: 'separate-minutes' },
+  { meeting: 'finished', distribution: 'pending', record: 'separate-minutes' },
+];
 
 class Random {
   private value: number;
@@ -24,72 +32,67 @@ class Random {
   pick<T>(items: readonly T[]): T { return items[this.int(0, items.length - 1)]; }
 }
 
-/** The purpose, recipient and treatment of the originals must tell the same story. */
+/** Use the meeting's timing together with distribution or the record's location. */
 export function solveDocumentFacts(facts: DocumentCaseFacts): Choice | null {
   if (!/^10月([1-9]|[12]\d|3[01])日$/.test(facts.today) || !facts.topic?.trim()
       || !Number.isInteger(facts.setCount) || facts.setCount <= 0
-      || !Number.isInteger(facts.pageCount) || facts.pageCount <= 1) return null;
-  const matches = ALL.filter(choice => {
-    const context = CONTEXT[choice];
-    return facts.use === context.use && facts.audience === context.audience && facts.originals === context.originals;
-  });
-  return matches.length === 1 ? matches[0] : null;
+      || !Number.isInteger(facts.pageCount) || facts.pageCount <= 1
+      || !['upcoming', 'finished'].includes(facts.meeting)
+      || !['sent', 'pending'].includes(facts.distribution)
+      || !['master-annotations', 'separate-minutes'].includes(facts.record)) return null;
+  if (facts.meeting === 'upcoming') return facts.distribution === 'pending' ? 'B' : 'A';
+  return facts.record === 'master-annotations' ? 'C' : 'A';
 }
 
-function proofFor(facts: DocumentCaseFacts, answer: Choice): string {
-  const proofs: Record<Choice, string> = {
-    A: '参加者は全文を持っていて、説明は3分だけ。今回の「まとめる」は、話す要点を1枚に整理すること。',
-    B: `読み合わせでは、${facts.setCount}人がそれぞれ全文を手元で使う。今回の「まとめる」は、人数分の資料セットをそろえること。`,
-    C: '午後は保管室へ原本を移す予定だった。今回の「まとめる」は、現物を全部集めて運べるようにすること。',
-  };
-  return proofs[answer];
+export function documentProof(facts: DocumentCaseFacts): string {
+  if (facts.meeting === 'upcoming') {
+    return facts.distribution === 'pending'
+      ? '検討会はこれからで、参加者には全文が届いていなかった。各自が読める資料セットを用意する。'
+      : '検討会はこれからで、参加者は全文を持っていた。部長が話すための要点を1枚にまとめる。';
+  }
+  return facts.record === 'master-annotations'
+    ? '検討会は終わり、指摘の記録は原本にだけ残っていた。原本を一緒に渡し、経緯をたどれるようにする。'
+    : '検討会は終わり、指摘の記録は別紙の議事メモにあった。検討の要点を1枚にまとめて渡す。';
 }
 
-/** The topic and quantities vary independently of what this afternoon's job is for. */
+/** Names and quantities vary independently of all eight work contexts. */
 export function createDocumentCase(inputSeed: number): CaseInstance {
   if (!Number.isFinite(inputSeed)) throw new RangeError('case seed must be finite');
   const seed = inputSeed >>> 0;
   const random = new Random(seed);
-  const context = CONTEXT[random.pick(ALL)];
+  const context = random.pick(DOCUMENT_CONTEXTS);
   const facts: DocumentCaseFacts = {
     kind: 'document', today: `10月${random.int(3, 28)}日`, topic: random.pick(TOPICS),
     pageCount: random.pick(PAGE_COUNTS), setCount: random.int(4, 9), ...context,
   };
   const correctChoice = solveDocumentFacts(facts)!;
   const { topic, setCount, pageCount } = facts;
-  const proof = proofFor(facts, correctChoice);
+  const proof = documentProof(facts);
   const bodies = documentRecords(facts);
   const subtitles: Record<Choice, string> = {
     A: `${topic}の要点を1枚に整理`, B: `${topic}を${setCount}人分の配布セットに整理`, C: `${topic}の原本全量を一束にして搬出`,
   };
   const success: Record<Choice, Ending> = {
-    A: { title: '要点1枚、準備完了。', subtitle: subtitles.A, boss: `${topic}の話す順番が1枚にまとまっているね。これなら3分で説明できる！`, player: '原本は戻してあります。説明用はこちらです！', explanation: proof },
-    B: { title: '一人ひとりに、一そろい。', subtitle: subtitles.B, boss: `${topic}、全${pageCount}ページが${setCount}人分そろっているね。これでみんなが手元で読める！`, player: '順番も部数も確認済みです！', explanation: proof },
-    C: { title: 'その一束、まるごと受領。', subtitle: subtitles.C, boss: `${topic}の原本、全部そろっているね。これで保管室へ移せる！ ……クリップまで特大だ。`, player: '全部まとめて、一括搬出です！', explanation: proof },
+    A: { title: '要点1枚、準備完了。', subtitle: subtitles.A, boss: `${topic}の要点が1枚になっているね。${facts.meeting === 'upcoming' ? 'これなら話す順番も迷わない！' : '検討した内容がすぐわかる！'}`, player: '原本は棚へ戻してあります。こちらが要点です！', explanation: proof },
+    B: { title: '一人ひとりに、一そろい。', subtitle: subtitles.B, boss: `${topic}、全${pageCount}ページが${setCount}人分そろったね。会で各自に渡そう！`, player: '順番も部数も確認済みです！', explanation: proof },
+    C: { title: 'その一束、まるごと受領。', subtitle: subtitles.C, boss: `${topic}、これで各ページの指摘や確認印をたどれるね。……クリップまで特大だ。`, player: '記録ごと、全部まとめてお持ちしました！', explanation: proof },
   };
-  const wrongBoss: Record<Choice, Record<Choice, string>> = {
-    A: {
-      A: '', B: `全ページを${setCount}セット作ったの？ みんな全文は持っているよ。説明を3分に収める準備をしてほしかったんだ。`,
-      C: '……これ、どうやって読むの？ 原本はここに残して、3分で説明できるように内容を整理してほしかったんだ。',
-    },
-    B: {
-      A: `要約はあるけど、${setCount}人でページを見比べるには全文が必要なんだ。`, B: '',
-      C: `……これ、みんなでどうやって読むの？ ${setCount}人がそれぞれ手元で読むんだよ。`,
-    },
-    C: {
-      A: '要約はよくできているけど、今日は原本を保管室へ移す日なんだ。元の資料も持ってきて。',
-      B: '配布するんじゃなくて、原本を保管室へ移すんだ。複製が増えてる！', C: '',
-    },
+  const wrongBoss: Record<Choice, string> = {
+    A: facts.meeting === 'upcoming'
+      ? '参加者は全文を持っているよ。私が会で説明する要点を整理してほしかったんだ。'
+      : '会はもう終わったよ。別紙の議事メモから、検討した要点を整理してほしかったんだ。',
+    B: 'まだ参加者に全文が届いていないんだ。これからの会で、各自が読めるようにしてほしかったんだ。',
+    C: '会はもう終わっているよ。各ページに残った指摘や確認印を見たかったんだ。',
   };
   const wrongTitles: Record<Choice, string> = {
-    A: '1枚にした。使う相手は？', B: `きれいな${setCount}部。使う目的は？`, C: '巨大な一束、どうやって読むの？',
+    A: '要点の外に、残ったもの。', B: `きれいな${setCount}部。使う目的は？`, C: '巨大な一束、どうやって読むの？',
   };
   const wrongPlayer: Record<Choice, string> = {
     A: '内容を短くするほうの「まとめる」じゃなかった……。',
     B: '配る準備だけ、完璧にできてしまった……。', C: 'まとまっては、いるんですが……。',
   };
   const endings = Object.fromEntries(ALL.map(choice => [choice, choice === correctChoice ? success[choice] : {
-    title: wrongTitles[choice], subtitle: subtitles[choice], boss: `${topic}は、${wrongBoss[correctChoice][choice]}`,
+    title: wrongTitles[choice], subtitle: subtitles[choice], boss: `${topic}は、${wrongBoss[correctChoice]}`,
     player: wrongPlayer[choice], explanation: proof,
   }])) as Record<Choice, Ending>;
   const choices: StageDefinition['choices'] = {
@@ -115,15 +118,15 @@ export function createDocumentCase(inputSeed: number): CaseInstance {
       packetId: topic, setCount, pageCount, intendedChoice: correctChoice,
       signage: {
         request: `${facts.today}\n${topic}\n上司のチャット`,
-        assignments: '午後の予定\n14:00', intakes: '当日の案内',
-        source: `${topic}\n原本 ${pageCount}ページ`, counter: '受取相手の伝言',
-        oldMemo: '原本の保管メモ', equipment: '共用備品\n複写機・トレー\nクリップ・台車',
+        assignments: '検討会の予定', intakes: '資料の送付記録',
+        source: `${topic}\n原本 ${pageCount}ページ`, counter: '部長の受取メモ',
+        oldMemo: '担当者の確認メモ', equipment: '共用備品\n複写機・トレー\nクリップ・台車',
       },
     },
   };
 }
 
-/** Every displayed record must agree with the same, ordinary job context. */
+/** Every displayed observation must agree with the same job context. */
 export function validateDocumentCase(instance: CaseInstance): string[] {
   if (instance.facts.kind !== 'document') return ['not a document case'];
   const errors: string[] = [];
@@ -144,10 +147,10 @@ export function validateDocumentCase(instance: CaseInstance): string[] {
   if (instance.evidenceChain.join() !== 'C02,C03,C06') errors.push('document evidence differs from job context');
   if (plan && (!plan.signage.request?.includes(facts.topic) || !plan.signage.request?.includes(facts.today)
       || plan.signage.source !== `${facts.topic}\n原本 ${facts.pageCount}ページ`
-      || plan.signage.assignments !== '午後の予定\n14:00' || plan.signage.intakes !== '当日の案内'
-      || plan.signage.counter !== '受取相手の伝言' || plan.signage.oldMemo !== '原本の保管メモ')) errors.push('document signage differs from facts');
+      || plan.signage.assignments !== '検討会の予定' || plan.signage.intakes !== '資料の送付記録'
+      || plan.signage.counter !== '部長の受取メモ' || plan.signage.oldMemo !== '担当者の確認メモ')) errors.push('document signage differs from facts');
   if (solved) {
-    const proof = proofFor(facts, solved);
+    const proof = documentProof(facts);
     for (const choice of ALL) {
       if (instance.endings[choice].explanation !== proof) errors.push(`document ending ${choice} proof contradicts context`);
       if (!instance.endings[choice].boss.includes(facts.topic)) errors.push(`document ending ${choice} dialogue contradicts facts`);

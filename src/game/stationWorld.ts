@@ -345,8 +345,9 @@ export class StationWorld {
     }
     for (const z of [-0.2, 0.04, 0.28]) this.softBox(bench, 2.7, 0.1, 0.2, COLORS.wood, 0, 0.56, z, 0.018);
     for (const y of [0.89, 1.13]) this.softBox(bench, 2.7, 0.19, 0.075, 0xc79a6e, 0, y, -0.36, 0.012);
-    this.cuboid(bench, 0.41, 0.017, 0.31, COLORS.paper, -0.58, 0.627, 0.03).rotation.y = -0.17;
-    for (let i = 0; i < 3; i++) this.cuboid(bench, 0.25 - i * 0.035, 0.008, 0.013, COLORS.sage, -0.58, 0.64, -0.055 + i * 0.06);
+    this.softBox(bench, 0.25, 0.025, 0.42, COLORS.teal, -0.58, 0.627, 0.03, 0.016);
+    this.cuboid(bench, 0.21, 0.006, 0.33, COLORS.paper, -0.58, 0.643, 0.02);
+    for (let i = 0; i < 3; i++) this.cuboid(bench, 0.14 - i * 0.02, 0.008, 0.013, COLORS.sage, -0.58, 0.648, -0.06 + i * 0.06);
     this.softBox(bench, 0.4, 0.4, 0.18, COLORS.orange, 0.77, 0.79, -0.04);
     this.collision(0.5, -2.7, 2.65, 0.83);
 
@@ -367,7 +368,7 @@ export class StationWorld {
     this.cuboid(kiosk, 1.36, 0.09, 0.57, COLORS.sage, 0, 2.24, 0);
     this.collision(4.7, -2.4, 1.24, 0.4);
 
-    // C04: a fixed voice-record kiosk. It is an ordinary prop until inspected.
+    // C04: a public route map, with no company records on the street.
     const recorder = new THREE.Group();
     recorder.position.set(-5.1, 0, 1.4);
     this.station.add(recorder);
@@ -376,11 +377,13 @@ export class StationWorld {
     this.softBox(recorder, 1.14, 0.1, 0.84, COLORS.wood, 0, 0.9, 0);
     this.softBox(recorder, 0.54, 0.42, 0.15, COLORS.teal, 0, 1.2, -0.13);
     this.cuboid(recorder, 0.41, 0.23, 0.017, COLORS.blue, 0, 1.25, -0.044);
-    for (let i = 0; i < 5; i++) this.cuboid(recorder, 0.018, 0.04 + (i % 3) * 0.035, 0.01, COLORS.paper, -0.14 + i * 0.07, 1.25, -0.033);
+    this.cuboid(recorder, 0.29, 0.022, 0.01, COLORS.paper, -0.02, 1.19, -0.033);
+    this.cuboid(recorder, 0.022, 0.11, 0.01, COLORS.paper, 0.12, 1.235, -0.033);
+    this.cuboid(recorder, 0.19, 0.022, 0.01, COLORS.orange, 0.04, 1.28, -0.033);
     this.cylinder(recorder, 0.06, 0.06, 0.02, COLORS.orange, 0.19, 0.975, 0.17);
     this.cuboid(recorder, 0.35, 0.012, 0.27, COLORS.paper, -0.22, 0.962, 0.17);
-    this.label(recorder, this.plan ? ['部長の手帳'] : ['音声メモ'], 0.72, 0.2, 0, 0.65, 0.351);
-    if (this.plan) this.label(recorder, this.signage('referenceClock', ['部長の手帳']), 0.44, 0.22, 0, 1.25, -0.02, { background: '#a6c6c8' });
+    this.label(recorder, this.plan ? ['駅周辺の路線案内'] : ['音声メモ'], 0.72, 0.2, 0, 0.65, 0.351);
+    if (this.plan) this.label(recorder, this.signage('referenceClock', ['周辺案内']), 0.54, 0.26, 0, 1.25, -0.02, { background: '#a6c6c8' });
     this.collision(-5.1, 1.4, 1.0, 0.72);
 
     // C05: a weather panel on a compact ticket-information stand.

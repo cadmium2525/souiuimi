@@ -17,15 +17,14 @@ export interface StationCasePlan {
   deliveryOpen: number; deliveryClose: number; signage?: Record<string, string>;
 }
 export interface OfficeCaseFacts {
-  kind: 'office'; today: string; roomName: string; occasion: string;
-  nextUse: 'meeting' | 'empty-space' | 'next-site';
-  furniture: 'continue' | 'return-loan' | 'preserve-layout';
-  site: 'stays' | 'cleared'; visitorCount: number;
+  kind: 'office'; today: string; roomName: string; visitorCount: number;
+  proposals: Array<{ person: '田中' | '佐藤'; use: 'meeting' | 'empty-space' | 'next-site'; occasion: string }>;
+  acceptedPerson: '田中' | '佐藤';
 }
 export interface StationCaseFacts {
   kind: 'station'; today: string; spokenHour: number;
   interpretation: 'ten-before-hour' | 'five-before-ten-past' | 'one-before-ten-past';
-  previousMeetings: Array<{ occasion: string; spokenHour: number; arrivedMinutes: number }>;
+  bossDepartureMinutes: number; bossTravelMinutes: number;
   weatherMinutes: number;
 }
 export interface MoneyCasePlan {
@@ -34,8 +33,7 @@ export interface MoneyCasePlan {
 }
 export interface MoneyCaseFacts {
   kind: 'money'; today: string; envelopeName: string; occasion: string; paidYen: number; purchaseYen: number;
-  source: 'company-advance' | 'boss-private' | 'group-fund';
-  arrangement: 'settle-company' | 'personal-thanks' | 'agreed-donation';
+  errands: Array<{ purpose: string; source: 'company-advance' | 'boss-private' | 'group-fund' }>;
 }
 export interface AmountCasePlan {
   baseYen: number; lowerYen: number; upperYen: number; requiredYen: number; requestId: string;
@@ -45,7 +43,7 @@ export interface AmountCaseFacts {
   kind: 'amount'; today: string; purpose: string; speakerName: string; baseYen: number;
   lowerYen: number; upperYen: number; requiredYen: number;
   /** One past event, shown as a request and a separate approved receipt. */
-  history: Array<{ occasion: string; baseYen: number; actualYen: number }>;
+  history: Array<{ occasion: string; baseYen: number; actualYen: number; term: 'weak' | 'strong' }>;
 }
 export interface DocumentCasePlan {
   packetId: string; setCount: number; pageCount: number; intendedChoice: Choice;
@@ -53,8 +51,8 @@ export interface DocumentCasePlan {
 }
 export interface DocumentCaseFacts {
   kind: 'document'; today: string; topic: string; setCount: number; pageCount: number;
-  use: 'short-talk' | 'individual-reading' | 'archive-transfer';
-  audience: 'speaker' | 'attendees' | 'storage-staff'; originals: 'stay' | 'transfer';
+  meeting: 'upcoming' | 'finished'; distribution: 'sent' | 'pending';
+  record: 'master-annotations' | 'separate-minutes';
 }
 export interface CaseInstance extends StageDefinition {
   caseSeed: number; correctChoice: Choice; evidenceChain: string[];

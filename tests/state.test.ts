@@ -56,9 +56,9 @@ test('all seven clues can be discovered in an arbitrary order', () => {
 
 test('clue records preserve the evidence without supplying the protagonist interpretation', () => {
   for (const clue of CLUES) assert.equal(Object.hasOwn(clue, 'thought'), false);
-  assert.equal(CLUES.find((clue) => clue.id === 'C01')?.body, '机の上には紙くずとコーヒーの染みがある。');
-  assert.equal(CLUES.find((clue) => clue.id === 'C03')?.body, 'コンテナには『移動式オフィス収納ユニット』と書かれている。');
-  assert.equal(CLUES.find((clue) => clue.id === 'C07')?.body, '『中身だけじゃなく、箱まで頼む！』');
+  assert.equal(CLUES.find((clue) => clue.id === 'C01')?.body, '机の上には紙くずとコーヒーの染みがある。床にも紙が落ちている。');
+  assert.equal(CLUES.find((clue) => clue.id === 'C03')?.body, 'コンテナには「移動式オフィス収納ユニット」と書かれている。');
+  assert.equal(CLUES.find((clue) => clue.id === 'C07')?.body, '上司の付箋\n「机の上の備品は会社のものだから、捨てないでね。紙くずだけはゴミ箱へ！」');
 });
 
 test('menu, journal and hidden tabs pause time and resume without charging paused time', () => {

@@ -7,56 +7,39 @@ export const DOCUMENT_ACTIONS: Record<Choice, string> = {
 
 export const DOCUMENT_EQUIPMENT = '資料準備室の共用備品\n複写機・ページトレー・クリップ・大型クリップ・搬出台車\n使用後は所定の位置へ戻してください。';
 
-/** These are ordinary records of this one job, rather than keys into other records. */
+/** Each record describes one ordinary fact; none names the requested output. */
 export function documentRecords(facts: DocumentCaseFacts): Record<string, string> {
-  const schedule: Record<DocumentCaseFacts['use'], string> = {
-    'short-talk': '14:00　打ち合わせ\n担当者からの説明は3分。その後、質疑を行う。',
-    'individual-reading': '14:00　資料の読み合わせ\n各自の手元で、ページを行き来しながら項目を比較する。',
-    'archive-transfer': '14:00　原本の保管場所を移転\n資料準備室から保管室へ。今後の原本閲覧も保管室で行う。',
-  };
-  const audience: Record<DocumentCaseFacts['audience'], string> = {
-    speaker: `参加者${facts.setCount}人には、全ページの資料を先週配布済み。\n説明担当者の手元メモは、まだ用意されていない。`,
-    attendees: `参加者は${facts.setCount}人。\n会場にはスクリーンがない。読み合わせに使う紙の資料は、まだ配っていない。`,
-    'storage-staff': '保管室の担当者が、午後に原本を引き取る。\n資料の内容を説明する会や、参加者への配布は予定されていない。',
-  };
-  const recipient: Record<DocumentCaseFacts['audience'], string> = {
-    speaker: '説明担当から\n「全文は手元にあります。話が長くなると次の議題に入れないので、時間内に伝えられるようにしておきたいです。」',
-    attendees: '会場担当から\n「みなさん別々のページを見比べる予定です。席は一人ずつ離して用意しました。」',
-    'storage-staff': '保管室の担当から\n「受け取った現物は、こちらでページ順を確認して保管棚へ入れます。搬入は台車を使えます。」',
-  };
   return {
     C01: `${facts.today}　上司からのチャット\n「この${facts.topic}、まとめといて。午後渡せるようにね。」`,
-    C02: `${facts.today}　午後の予定\n${facts.topic}\n${schedule[facts.use]}`,
-    C03: `${facts.topic}についての案内\n${audience[facts.audience]}`,
-    C04: `${facts.topic}\n原本：全${facts.pageCount}ページ\nページ番号：1〜${facts.pageCount}\n複製可。原本への書き込み不可。`,
-    C05: recipient[facts.audience],
-    C06: facts.originals === 'stay'
-      ? `${facts.topic}の保管メモ\n原本は資料準備室に置く。午後の作業が終わったら、この棚へ戻す。`
-      : `${facts.topic}の保管メモ\n午後、原本の保管場所を保管室へ移す。資料準備室の棚には現物を残さない。`,
+    C02: `${facts.today}　検討会の予定\n${facts.topic}\n${facts.meeting === 'upcoming' ? '15:00〜16:00　各担当からの説明と意見交換' : '10:00〜11:00　各担当からの説明と意見交換\n11:00　終了'}`,
+    C03: `${facts.topic}の送付記録\n参加者：${facts.setCount}人\n${facts.distribution === 'sent' ? '全ページの資料を各自へ送付済み。受領の返事も全員分そろっている。' : '全ページの資料は、まだ参加者へ送っていない。'}`,
+    C04: `${facts.topic}\n原本：全${facts.pageCount}ページ\nページ番号：1〜${facts.pageCount}\n複製可。原本への追記は担当者のみ。`,
+    C05: '部長の受取メモ\n「午後、私の机で受け取ります。会の前なら説明に使い、会の後なら検討の経緯を確認します。」',
+    C06: `${facts.topic}　担当者の確認メモ\n${facts.record === 'master-annotations' ? '各担当の指摘や確認印は、原本の各ページに書き込んである。別の記録やデータには移していない。' : '各担当の指摘や確認結果は、別紙の議事メモに記録してある。原本の各ページには書き込みがない。'}`,
     C07: DOCUMENT_EQUIPMENT,
   };
 }
 
 export const DOCUMENT_FIXTURE_FACTS: DocumentCaseFacts = {
   kind: 'document', today: '10月15日', topic: '研修資料', setCount: 6, pageCount: 240,
-  use: 'archive-transfer', audience: 'storage-staff', originals: 'transfer',
+  meeting: 'finished', distribution: 'sent', record: 'master-annotations',
 };
 const BODIES = documentRecords(DOCUMENT_FIXTURE_FACTS);
 const CLUES: Clue[] = [
   { id: 'C01', symbol: '01', title: '上司のチャット', category: '作業台 / 伝言', body: BODIES.C01, x: -1, z: 0.1, radius: 1.6 },
-  { id: 'C02', symbol: '02', title: '午後の予定', category: '掲示板 / 予定', body: BODIES.C02, x: -4.8, z: -2, radius: 1.6 },
-  { id: 'C03', symbol: '03', title: '当日の案内', category: '書庫 / 案内', body: BODIES.C03, x: -4.9, z: 1.6, radius: 1.6 },
+  { id: 'C02', symbol: '02', title: '検討会の予定', category: '掲示板 / 予定', body: BODIES.C02, x: -4.8, z: -2, radius: 1.6 },
+  { id: 'C03', symbol: '03', title: '資料の送付記録', category: '書庫 / 記録', body: BODIES.C03, x: -4.9, z: 1.6, radius: 1.6 },
   { id: 'C04', symbol: '04', title: '机に置かれた資料', category: '資料台 / 現物', body: BODIES.C04, x: 1, z: -0.4, radius: 1.6 },
-  { id: 'C05', symbol: '05', title: '受取相手の伝言', category: '受取窓口 / 伝言', body: BODIES.C05, x: 4.5, z: -1.9, radius: 1.6 },
-  { id: 'C06', symbol: '06', title: '原本の保管メモ', category: '保管棚 / メモ', body: BODIES.C06, x: 3.4, z: 1.6, radius: 1.6 },
+  { id: 'C05', symbol: '05', title: '部長の受取メモ', category: '受取窓口 / 伝言', body: BODIES.C05, x: 4.5, z: -1.9, radius: 1.6 },
+  { id: 'C06', symbol: '06', title: '担当者の確認メモ', category: '保管棚 / メモ', body: BODIES.C06, x: 3.4, z: 1.6, radius: 1.6 },
   { id: 'C07', symbol: '07', title: '共用備品の一覧', category: 'デスク / 備品', body: BODIES.C07, x: 0.1, z: -2.8, radius: 1.6 },
 ];
 
-const PROOF = '午後は保管室へ原本を移す予定だった。今回の「まとめる」は、現物を全部集めて運べるようにすること。';
+const PROOF = '検討会は終わり、指摘の記録は原本にだけ残っていた。原本を一緒に渡し、経緯をたどれるようにする。';
 const ENDINGS: Record<Choice, Ending> = {
-  A: { title: '1枚では、原本を運べない。', subtitle: '研修資料の要点を1枚に整理', boss: '要約はよくできているけど、今日は原本を保管室へ移す日なんだ。元の資料も持ってきて。', player: '内容を短くするほうの「まとめる」じゃなかった……。', explanation: PROOF },
-  B: { title: 'きれいな6部。でも、原本は？', subtitle: '研修資料を6人分の配布セットに整理', boss: '配布するんじゃなくて、原本を保管室へ移すんだ。複製が増えてる！', player: '配る準備だけ、完璧にできてしまった……。', explanation: PROOF },
-  C: { title: 'その一束、まるごと受領。', subtitle: '研修資料の原本全量を一括で搬出', boss: '原本、全部そろっているね。これで保管室へ移せる！ ……クリップまで特大だ。', player: '全部まとめて、一括搬出です！', explanation: PROOF },
+  A: { title: '要点の外に、残った記録。', subtitle: '研修資料の要点を1枚に整理', boss: '要約だけでは、各ページの確認印が追えないんだ。書き込みのある原本も持ってきて。', player: '検討の記録ごと渡す、ということでしたか。', explanation: PROOF },
+  B: { title: '増えた複製、残った原本。', subtitle: '研修資料を6人分の配布セットに整理', boss: '会はもう終わっているよ。各ページに残った確認の記録を見たかったんだ。', player: '配る準備だけ、完璧にできてしまった……。', explanation: PROOF },
+  C: { title: 'その一束、まるごと受領。', subtitle: '研修資料の原本全量を一括で搬出', boss: '研修資料、これで確認した経緯をたどれるね。……クリップまで特大だ。', player: '記録ごと、全部まとめてお持ちしました！', explanation: PROOF },
 };
 
 const COPY: Record<string, string> = {
@@ -72,7 +55,7 @@ const COPY: Record<string, string> = {
   cinematicB: '研修資料をページ順にそろえ、6人分の配布セットを作る。',
   cinematicC: '研修資料の原本全240ページを束ね、巨大クリップで留めて台車で運ぶ。',
   cinematicLabel: '資料を、まとめ中。', worldLocation: 'よしなに資料準備室', worldClock: '13:40',
-  worldLabel: '同じ資料でも、\nまとめ方は？', reviewHeading: '資料を使う目的と、相手の話',
+  worldLabel: '同じ資料でも、\nまとめ方は？', reviewHeading: '会の時刻と、資料の状態',
   correctChoice: 'C', successLabel: 'まさかの一括受領', fallbackHeading: '資料準備室を表示できませんでした。',
 };
 

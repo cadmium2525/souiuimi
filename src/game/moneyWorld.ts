@@ -78,7 +78,7 @@ export class MoneyWorld {
     this.scene.add(new THREE.HemisphereLight(0xfff2d9, 0x84988d, 2.15));
     const sun = new THREE.DirectionalLight(0xffe1b8, 2.65); sun.position.set(-8, 13, 8); this.scene.add(sun);
     const fill = new THREE.DirectionalLight(0xd4edeb, 0.8); fill.position.set(7, 8, -4); this.scene.add(fill);
-    this.room.name = 'Yoshinani purchasing and settlement corner';
+    this.room.name = 'Yoshinani company break room after shopping';
     this.scene.add(this.room, this.hero, this.clerk, this.tableEnvelope, this.receipt, this.flyingCoin, this.postEnvelope);
     this.buildRoom();
     this.buildCounter();
@@ -201,7 +201,7 @@ export class MoneyWorld {
     this.box(this.room, 12.0, 0.13, 0.09, C.wood, 0, 0.14, -4.44);
     this.box(this.room, 0.09, 0.13, 9.0, C.wood, -5.92, 0.14, 0);
     this.box(this.room, 0.12, 2.55, 0.17, C.wood, 6.0, 1.27, -0.4);
-    this.sign(this.room, ['Y O S H I N A N I', '購 買 ・ 精 算 コ ー ナ ー'], 3.4, 0.62, -1.75, 2.85, -4.455, false, '#326c65', '#fff9eb');
+    this.sign(this.room, ['よしなに', '社 内 休 憩 室'], 3.4, 0.62, -1.75, 2.85, -4.455, false, '#326c65', '#fff9eb');
     // A sunlit window and small glazed tiles make this distinct from the office.
     this.box(this.room, 2.85, 1.72, 0.11, C.wood, 3.65, 2.14, -4.43, 0.035);
     this.box(this.room, 2.64, 1.51, 0.035, C.blue, 3.65, 2.14, -4.35);
@@ -221,16 +221,20 @@ export class MoneyWorld {
     for (let x = -3.5; x < 3.5; x += 0.62) this.box(this.room, 0.018, 0.63, 0.015, 0x648377, x, 0.47, -2.984);
     this.collision(-0.15, -3.45, 7.8, 0.9);
     this.shadow(this.room, -0.15, -3.45, 8.4, 1.7);
-    // Espresso machine, cups, jars and a cash register are real counter props.
+    // The office coffee shelf has shared cups and supplies, with no shop register.
     this.box(this.room, 1.05, 0.72, 0.57, C.metal, -2.8, 1.51, -3.44, 0.05);
     this.box(this.room, 0.94, 0.19, 0.62, C.cream, -2.8, 1.8, -3.44, 0.03);
     this.box(this.room, 0.86, 0.1, 0.51, C.dark, -2.8, 1.16, -3.2);
     for (const x of [-3.03, -2.58]) { this.cylinder(this.room, 0.08, 0.08, 0.09, C.metal, x, 1.52, -3.11); this.cup(this.room, x, 1.23, -3.08, 0.55); }
     this.cylinder(this.room, 0.16, 0.16, 0.34, C.blush, -1.92, 1.32, -3.47);
     this.cylinder(this.room, 0.18, 0.18, 0.055, C.wood, -1.92, 1.51, -3.47);
-    this.box(this.room, 0.8, 0.16, 0.55, C.cream, 2.9, 1.24, -3.3, 0.04);
-    const screen = this.box(this.room, 0.56, 0.48, 0.07, C.dark, 2.9, 1.55, -3.33, 0.025); screen.rotation.x = -0.16;
-    this.sign(this.room, ['THANK YOU', `¥${this.changeYen.toLocaleString('ja-JP')}`], 0.48, 0.32, 2.9, 1.57, -3.276, false, '#a6c6c8');
+    this.box(this.room, 0.95, 0.055, 0.6, C.wood, 2.9, 1.2, -3.35, 0.025);
+    for (const [x, color] of [[2.64, C.blush], [2.99, C.cream]] as const) {
+      this.cylinder(this.room, 0.14, 0.14, 0.27, color, x, 1.36, -3.4);
+      this.cylinder(this.room, 0.15, 0.15, 0.035, C.wood, x, 1.51, -3.4);
+    }
+    this.box(this.room, 0.26, 0.16, 0.32, C.paper, 3.32, 1.3, -3.37, 0.025);
+    this.box(this.room, 0.14, 0.065, 0.035, C.cream, 3.32, 1.41, -3.37, 0.008);
     for (let x = -0.85; x <= 0.35; x += 0.38) this.cup(this.room, x, 1.18, -3.65, 0.6);
     this.sign(this.room, ['社内ドリンク', 'ほっと、ひと息。'], 1.4, 0.66, 0.9, 2.2, -4.44, false, '#e7c8ae');
     this.counterCoffee.position.set(1.65, 1.17, -3.2); this.scene.add(this.counterCoffee); this.cup(this.counterCoffee, 0, 0, 0, 0.85);
@@ -252,18 +256,27 @@ export class MoneyWorld {
       const coin = this.cylinder(this.scene, 0.09, 0.09, 0.023, C.gold, -0.23 + i % 3 * 0.17, 0.856 + Math.floor(i / 3) * 0.026, 0.08 + Math.floor(i / 3) * 0.14);
       this.tableCoins.push(coin);
     }
-    // C03 ledger: angled, open book on a narrow side console.
+    // C03: the shared laptop keeps the two errands in the original work chat.
     this.box(this.room, 1.3, 0.1, 0.95, C.wood, -4.82, 0.91, -2.05, 0.035);
     for (const x of [-5.31, -4.33]) this.box(this.room, 0.08, 0.85, 0.08, C.teal, x, 0.47, -2.05);
     this.collision(-4.82, -2.05, 1.3, 0.95); this.shadow(this.room, -4.82, -2.05, 1.65, 1.3);
-    this.box(this.room, 1.01, 0.08, 0.72, C.teal, -4.82, 1.0, -2.05, 0.012);
-    this.sign(this.room, this.lines('ledger', ['買い物前のメモ', '本日分']), 0.93, 0.64, -4.82, 1.046, -2.05, true);
-    this.box(this.room, 0.022, 0.018, 0.65, C.wood, -4.82, 1.052, -2.05);
-    // C04 rules stand, fixed to the wall rather than highlighted in space.
-    const rules = new THREE.Group(); rules.position.set(-5.7, 0, 1.6); rules.rotation.y = Math.PI / 2; this.room.add(rules);
-    this.box(rules, 1.38, 1.42, 0.07, C.wood, 0, 1.76, 0);
-    this.sign(rules, this.lines('rules', ['会計からの案内', '購買部']), 1.25, 1.27, 0, 1.76, 0.046);
+    this.box(this.room, 1.03, 0.045, 0.65, C.metal, -4.82, 1.0, -2.05, 0.018);
+    this.box(this.room, 0.86, 0.008, 0.27, C.dark, -4.82, 1.026, -2.16, 0.012);
+    for (let row = 0; row < 3; row++) for (let col = 0; col < 8; col++) this.box(this.room, 0.08, 0.006, 0.055, C.cream, -5.17 + col * 0.1, 1.033, -2.245 + row * 0.08, 0.004);
+    this.box(this.room, 0.27, 0.006, 0.13, C.blue, -4.82, 1.028, -1.91, 0.01);
+    const laptopScreen = this.box(this.room, 1.03, 0.65, 0.045, C.dark, -4.82, 1.35, -2.34, 0.022); laptopScreen.rotation.x = -0.14;
+    const chat = this.sign(this.room, this.lines('ledger', ['共有PC', '業務チャット']), 0.91, 0.51, -4.82, 1.35, -2.31, false, '#e7eadf'); chat.rotation.x = -0.14;
+    // C04: a personal phone sits on a charging stand, not a public notice board.
     this.box(this.room, 0.38, 0.63, 0.74, C.cream, -5.55, 0.35, 1.6, 0.035);
+    this.box(this.room, 0.4, 0.055, 0.8, C.wood, -5.6, 0.7, 1.6, 0.022);
+    this.box(this.room, 0.2, 0.018, 0.07, C.dark, -5.77, 0.74, 1.6, 0.006);
+    this.box(this.room, 0.045, 0.14, 0.1, C.cream, -5.91, 0.78, 1.6, 0.012);
+    const phone = new THREE.Group(); phone.position.set(-5.55, 0.74, 1.6); phone.rotation.y = Math.PI / 2; this.room.add(phone);
+    this.box(phone, 0.3, 0.04, 0.22, C.teal, 0, 0.02, 0, 0.02);
+    this.box(phone, 0.07, 0.15, 0.07, C.teal, 0, 0.09, -0.045, 0.014);
+    this.box(phone, 0.34, 0.62, 0.035, C.dark, 0, 0.34, 0, 0.028);
+    this.sign(phone, this.lines('rules', ['自分のスマホ', 'メッセージ']), 0.29, 0.48, 0, 0.34, 0.021, false, '#e7eadf');
+    this.box(phone, 0.08, 0.014, 0.004, C.metal, 0, 0.62, 0.02, 0.004);
     this.collision(-5.6, 1.6, 0.4, 0.8);
     // C05 donation box: a clear front lets the deposited coins remain visible.
     this.box(this.room, 1.06, 0.13, 0.95, C.wood, 4.5, 0.74, -1.9, 0.04);
@@ -272,22 +285,27 @@ export class MoneyWorld {
     this.box(this.room, 0.65, 0.26, 0.014, 0xb6c9b6, 4.5, 0.98, -1.735);
     this.box(this.room, 0.76, 0.065, 0.58, C.wood, 4.5, 1.19, -2.02, 0.02);
     this.box(this.room, 0.33, 0.012, 0.056, C.dark, 4.5, 1.229, -1.97);
-    this.sign(this.room, this.lines('donationBox', ['本棚づくり', '募金箱']), 0.82, 0.39, 4.5, 1.59, -2.02);
+    this.sign(this.room, this.lines('donationBox', ['本棚づくり', '社内募金箱']), 0.82, 0.39, 4.5, 1.59, -2.02);
     this.collision(4.5, -1.9, 1.06, 0.95); this.shadow(this.room, 4.5, -1.9, 1.5, 1.3);
     this.donationCoins = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.075, 0.075, 0.025, 12), this.material(C.gold), 6);
     const transform = new THREE.Object3D();
     for (let i = 0; i < 6; i++) { transform.position.set(4.3 + i % 3 * 0.16, 0.89 + Math.floor(i / 3) * 0.055, -1.71); transform.updateMatrix(); this.donationCoins.setMatrixAt(i, transform.matrix); }
     this.donationCoins.count = 0; this.scene.add(this.donationCoins);
-    // C06 order sheet, on its own small writing shelf.
+    // C06: a still-folded shopping bag and the unopened second envelope.
     this.box(this.room, 1.35, 0.09, 0.8, C.wood, 3.4, 0.93, 1.6, 0.045);
     for (const x of [2.9, 3.9]) this.box(this.room, 0.08, 0.9, 0.08, C.teal, x, 0.46, 1.6);
-    this.box(this.room, 0.68, 0.026, 0.58, C.teal, 3.4, 1.0, 1.6, 0.015);
-    this.sign(this.room, this.lines('order', ['本日の注文票', '総務部']), 0.6, 0.51, 3.4, 1.017, 1.6, true);
-    this.cylinder(this.room, 0.055, 0.05, 0.2, C.cream, 3.95, 1.08, 1.7);
+    this.box(this.room, 0.59, 0.016, 0.36, C.paper, 3.06, 0.99, 1.4, 0.008);
+    this.sign(this.room, this.lines('order', ['次の買い物', '未使用の袋']), 0.54, 0.3, 3.06, 1.001, 1.4, true);
+    this.box(this.room, 0.53, 0.025, 0.59, C.blush, 3.66, 1.0, 1.57, 0.012);
+    this.box(this.room, 0.48, 0.006, 0.025, C.wood, 3.66, 1.016, 1.61);
+    const bagHandle = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.012, 6, 12), this.material(C.wood)); bagHandle.position.set(3.66, 1.017, 1.32); bagHandle.rotation.x = Math.PI / 2; bagHandle.scale.x = 1.3; this.room.add(bagHandle);
+    const nextEnvelope = new THREE.Group(); nextEnvelope.position.set(3.08, 1.0, 1.81); this.room.add(nextEnvelope); this.envelope(nextEnvelope, 0.55, 0.27);
     this.collision(3.4, 1.6, 1.35, 0.8); this.shadow(this.room, 3.4, 1.6, 1.7, 1.1);
-    // C07 the boss's reply under the counter lip; no clue number or marker.
-    this.box(this.room, 0.77, 0.53, 0.024, C.gold, 0.1, 0.74, -2.973, 0.01);
-    this.sign(this.room, this.lines('oldMemo', ['上司からの', '返信']), 0.68, 0.43, 0.1, 0.74, -2.955, false, '#f1d98d');
+    // C07: the boss's reply arrived on the shared messaging terminal.
+    this.box(this.room, 0.67, 0.045, 0.4, C.metal, 0.1, 1.185, -3.3, 0.025);
+    this.box(this.room, 0.1, 0.18, 0.1, C.metal, 0.1, 1.27, -3.35, 0.012);
+    this.box(this.room, 0.86, 0.53, 0.055, C.dark, 0.1, 1.53, -3.3, 0.025);
+    this.sign(this.room, this.lines('oldMemo', ['上司からの', '返信']), 0.75, 0.4, 0.1, 1.53, -3.268, false, '#e7eadf');
     // Company settlement post: the wide slot is reachable from the front.
     this.box(this.room, 0.91, 1.23, 0.72, C.teal, -4.55, 0.65, 3.05, 0.075);
     this.box(this.room, 0.98, 0.1, 0.8, C.cream, -4.55, 1.3, 3.05, 0.035);
@@ -341,10 +359,10 @@ export class MoneyWorld {
   }
 
   private buildClerk(): void {
-    this.clerk.name = 'Purchasing clerk'; this.clerk.position.set(1.42, 0, -4.04); this.clerk.rotation.y = Math.PI;
+    this.clerk.name = 'Colleague using the office coffee shelf'; this.clerk.position.set(1.42, 0, -4.04); this.clerk.rotation.y = Math.PI;
     this.clerk.add(this.clerkBody); this.clerkBody.position.set(0, 0.83, 0);
     this.round(this.clerkBody, 0.3, C.sage, 0, 0, 0, 1.05, 1.2, 0.8);
-    this.box(this.clerkBody, 0.36, 0.5, 0.04, C.cream, 0, -0.07, -0.24, 0.02);
+    for (const x of [-0.055, 0.055]) this.box(this.clerkBody, 0.07, 0.08, 0.035, C.cream, x, 0.2, -0.23, 0.01).rotation.z = x < 0 ? 0.35 : -0.35;
     this.clerkHead.position.set(0, 0.46, 0); this.clerkBody.add(this.clerkHead);
     this.round(this.clerkHead, 0.265, C.skin, 0, 0.03, 0, 0.96, 1.04, 0.9);
     this.round(this.clerkHead, 0.274, C.dark, 0, 0.16, 0.035, 1.01, 0.65, 0.95);

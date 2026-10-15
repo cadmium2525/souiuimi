@@ -24,12 +24,17 @@ test('amount cases normalize seeds, are deterministic, and freeze generated case
   assert.doesNotMatch(caseText(STAGE04), forbidden, 'original fixture is natural prose too');
 });
 
-test('3,000 amount cases combine a past request and approved receipt without repeated hints', () => {
+test('3,000 amount cases require combining a past term and approved receipt, with no single-card answer', () => {
   const answerCounts = new Map<Choice, number>();
   const purposeAnswers = new Map<string, Set<Choice>>();
   const occasionAnswers = new Map<string, Set<Choice>>();
   const lowerAnswers = new Map<number, Set<Choice>>();
   const upperAnswers = new Map<number, Set<Choice>>();
+  const termAnswers = new Map<string, Set<Choice>>();
+  const actualAnswers = new Map<number, Set<Choice>>();
+  const receiptSuffixAnswers = new Map<number, Set<Choice>>();
+  const cardAnswers = new Map<string, Set<Choice>>();
+  const pairAnswers = new Map<string, Set<Choice>>();
   const uniqueFacts = new Set<string>(), dates = new Set<string>();
   const record = <T>(map: Map<T, Set<Choice>>, key: T, answer: Choice) => {
     if (!map.has(key)) map.set(key, new Set());
@@ -47,6 +52,11 @@ test('3,000 amount cases combine a past request and approved receipt without rep
     answerCounts.set(instance.correctChoice, (answerCounts.get(instance.correctChoice) ?? 0) + 1);
     record(purposeAnswers, facts.purpose, instance.correctChoice);
     for (const row of facts.history) record(occasionAnswers, row.occasion, instance.correctChoice);
+    record(termAnswers, facts.history[0].term, instance.correctChoice);
+    record(actualAnswers, facts.history[0].actualYen, instance.correctChoice);
+    record(receiptSuffixAnswers, facts.history[0].actualYen % 1000, instance.correctChoice);
+    for (const clue of instance.clues) record(cardAnswers, `${clue.id}\n${clue.title}\n${clue.category}\n${clue.body}`, instance.correctChoice);
+    record(pairAnswers, `${instance.clues[1].body}\n---\n${instance.clues[2].body}`, instance.correctChoice);
     record(lowerAnswers, facts.lowerYen, instance.correctChoice);
     record(upperAnswers, facts.upperYen, instance.correctChoice);
     uniqueFacts.add(JSON.stringify(facts)); dates.add(facts.today);
@@ -73,15 +83,16 @@ test('3,000 amount cases combine a past request and approved receipt without rep
     assert.equal(facts.history.length, 1);
     const row = facts.history[0], request = instance.clues[1], receipt = instance.clues[2];
     assert.notEqual(row.baseYen, 10000, 'the past request does not reveal the current amount');
-    assert.equal(row.actualYen < row.baseYen, instance.correctChoice === 'A');
+    assert.equal((row.term === 'weak') === (row.actualYen < row.baseYen), instance.correctChoice === 'A');
     assert.equal(request.title, `${row.occasion}のチャット`);
-    assert.equal(request.body, `${row.occasion}のチャット\n部長「${amountYen(row.baseYen)}弱を持ってきて」`);
+    assert.equal(request.body, `${row.occasion}のチャット\n部長「${amountYen(row.baseYen)}${row.term === 'weak' ? '弱' : '強'}を持ってきて」`);
     assert.equal(receipt.title, '立替金の受取控え');
     assert.ok(receipt.body.includes(row.occasion));
     assert.ok(receipt.body.includes(`受取額：${amountYen(row.actualYen)}`));
     assert.ok(receipt.body.includes('部長「この金額でお願いします」'));
     assert.ok(!request.body.includes(amountYen(row.actualYen)), 'request alone does not reveal the approved amount');
-    assert.doesNotMatch(receipt.body, /弱|持ってきて/, 'receipt contributes the actual amount, without repeating the request');
+    assert.doesNotMatch(receipt.body, /弱|強|持ってきて/, 'receipt contributes the actual amount, without repeating the request');
+    assert.ok(!receipt.body.includes(amountYen(row.baseYen)), 'receipt does not reveal the past baseline');
     assert.ok(instance.clues[0].body.includes(facts.purpose));
     assert.ok(instance.clues[0].body.includes(facts.today));
     assert.ok(instance.clues[6].body.includes('「弱」は、基準額より少し少ない'));
@@ -96,7 +107,7 @@ test('3,000 amount cases combine a past request and approved receipt without rep
       assert.ok(ending.boss.includes(amountYen(facts.requiredYen)));
       assert.ok(ending.explanation.startsWith(WEAK_DEFINITION));
       assert.ok(ending.explanation.includes(amountYen(facts.requiredYen)));
-      assert.ok(ending.explanation.length <= 120, 'explanation remains brief on a phone');
+      assert.ok(ending.explanation.length <= 66, 'explanation remains brief on a phone');
       assert.equal(ending.explanation.split('。').filter(Boolean).length, 2);
       assert.ok(!ending.explanation.includes(row.occasion), 'full evidence remains in the optional review');
     }
@@ -113,10 +124,12 @@ test('3,000 amount cases combine a past request and approved receipt without rep
     assert.equal(instance.choices.C.label, '');
   }
   assert.ok(uniqueFacts.size > 2900, 'separate seeds still produce varied requests'); assert.equal(dates.size, 26);
+  assert.deepEqual(new Set(termAnswers.keys()), new Set(['weak', 'strong']));
   for (const choice of choices) assert.ok((answerCounts.get(choice) ?? 0) > 1000);
-  for (const map of [purposeAnswers, occasionAnswers, lowerAnswers, upperAnswers]) {
-    for (const outcomes of map.values()) assert.deepEqual(outcomes, new Set(choices), 'purpose, occasion and candidate amounts must not determine the answer');
+  for (const map of [purposeAnswers, occasionAnswers, lowerAnswers, upperAnswers, termAnswers, actualAnswers, receiptSuffixAnswers, cardAnswers]) {
+    for (const [projection, outcomes] of map) assert.deepEqual(outcomes, new Set(choices), `one observation must allow both intentions: ${projection}`);
   }
+  for (const outcomes of pairAnswers.values()) assert.equal(outcomes.size, 1, 'the combined request and receipt determine one intention');
 });
 
 test('amount solver requires one valid request/receipt event and ignores declared requiredYen', () => {
@@ -127,9 +140,12 @@ test('amount solver requires one valid request/receipt event and ignores declare
   assert.equal(solveAmountFacts({ ...facts, history: [...facts.history, first] }), null);
   const opposite = { ...first, actualYen: first.baseYen - (first.actualYen - first.baseYen) };
   assert.notEqual(solveAmountFacts({ ...facts, history: [opposite] }), instance.correctChoice);
+  const swappedTerm = { ...first, term: first.term === 'weak' ? 'strong' as const : 'weak' as const };
+  assert.notEqual(solveAmountFacts({ ...facts, history: [swappedTerm] }), instance.correctChoice, 'the same receipt supports the opposite intention with the other request term');
   for (const changed of [
     { ...first, actualYen: first.baseYen }, { ...first, occasion: '' },
     { ...first, baseYen: 0 }, { ...first, actualYen: 1.5 },
+    { ...first, term: undefined! },
   ]) assert.equal(solveAmountFacts({ ...facts, history: [changed] }), null);
   assert.equal(solveAmountFacts({ ...facts, speakerName: '知らない人' }), null);
   assert.equal(solveAmountFacts({ ...facts, requiredYen: -5 }), instance.correctChoice, 'the boss’s actual past usage determines the intended side');
