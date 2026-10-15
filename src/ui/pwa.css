@@ -1,0 +1,7 @@
+/* These controls appear only on the title screen. */
+#pwa-tools{position:fixed;right:max(28px,env(safe-area-inset-right));bottom:max(64px,calc(env(safe-area-inset-bottom) + 40px));z-index:3;display:flex;gap:8px;max-width:calc(100vw - 28px);pointer-events:none}
+#pwa-tools button{pointer-events:auto;min-height:44px;padding:10px 16px;border:1px solid #183e3940;border-radius:24px;background:#f3efe5f2;color:#183e39;font-size:12px;font-weight:700;line-height:1.5;box-shadow:0 3px 12px #183e3912;touch-action:manipulation}
+#pwa-tools button:hover{background:#e0e7d2}
+#pwa-tools button:disabled{opacity:.7}
+@media(max-width:760px) and (orientation:portrait){#pwa-tools{right:max(14px,env(safe-area-inset-right));top:max(18px,env(safe-area-inset-top));bottom:auto}#pwa-tools button{font-size:11px;padding:9px 13px}.has-pwa-action #ui[data-phase="title"] .edition-label{visibility:hidden}}
+@media(orientation:landscape) and (max-height:500px){#pwa-tools{right:max(24px,env(safe-area-inset-right));bottom:max(19px,env(safe-area-inset-bottom))}#pwa-tools button{font-size:11px;padding:8px 12px}}

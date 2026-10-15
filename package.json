@@ -1,0 +1,33 @@
+{
+  "name": "souiu-imi",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --experimental-strip-types --test tests/state.test.ts tests/cases.test.ts tests/money-cases.test.ts tests/amount-cases.test.ts tests/document-cases.test.ts",
+    "test:browser": "node tests/playtest.mjs",
+    "test:deployment": "node tests/deployment-check.mjs",
+    "test:scenarios": "node tests/scenario-check.mjs",
+    "test:visual": "node tests/visual-check.mjs",
+    "test:stages": "node tests/stages-check.mjs",
+    "test:random": "node tests/random-cases-check.mjs",
+    "test:money": "node tests/money-check.mjs",
+    "test:amount": "node tests/amount-check.mjs",
+    "test:document": "node tests/document-check.mjs",
+    "test:document-ui": "node tests/document-ui-check.mjs",
+    "test:pwa": "node tests/pwa-check.mjs",
+    "test:pwa:live": "node tests/pwa-live-check.mjs"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@types/three": "^0.180.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.9"
+  }
+}
