@@ -243,7 +243,7 @@ export class MoneyWorld {
     for (const x of [-1.24, 1.24]) for (const z of [-0.64, 0.44]) this.box(this.room, 0.1, 0.66, 0.1, C.dark, x, 0.35, z, 0.02);
     this.collision(0, -0.1, 3.15, 1.5); this.shadow(this.room, 0, -0.1, 3.8, 2.1);
     this.tableEnvelope.position.set(-1.0, 0.823, 0.1); this.envelope(this.tableEnvelope, 0.82, 0.5);
-    this.sign(this.tableEnvelope, this.lines('envelope', [this.plan?.envelopeId ?? '封筒 E17', `お預かり ¥${(this.plan?.paidYen ?? 5000).toLocaleString('ja-JP')}`]), 0.7, 0.35, 0, 0.023, 0, true, '#eddbb8');
+    this.sign(this.tableEnvelope, this.lines('envelope', [this.plan?.envelopeId ?? '買い出し代', `お預かり ¥${(this.plan?.paidYen ?? 5000).toLocaleString('ja-JP')}`]), 0.7, 0.35, 0, 0.023, 0, true, '#eddbb8');
     this.receipt.position.set(0.95, 0.824, -0.35);
     this.box(this.receipt, 0.52, 0.018, 0.88, C.paper);
     this.sign(this.receipt, this.lines('receipt', ['領収書', `合計 ¥${(this.plan?.purchaseYen ?? 3200).toLocaleString('ja-JP')}`, `釣銭 ¥${this.changeYen.toLocaleString('ja-JP')}`]), 0.46, 0.77, 0, 0.012, 0, true);
@@ -257,12 +257,12 @@ export class MoneyWorld {
     for (const x of [-5.31, -4.33]) this.box(this.room, 0.08, 0.85, 0.08, C.teal, x, 0.47, -2.05);
     this.collision(-4.82, -2.05, 1.3, 0.95); this.shadow(this.room, -4.82, -2.05, 1.65, 1.3);
     this.box(this.room, 1.01, 0.08, 0.72, C.teal, -4.82, 1.0, -2.05, 0.012);
-    this.sign(this.room, this.lines('ledger', ['現金出納台帳', '本日分']), 0.93, 0.64, -4.82, 1.046, -2.05, true);
+    this.sign(this.room, this.lines('ledger', ['買い物前のメモ', '本日分']), 0.93, 0.64, -4.82, 1.046, -2.05, true);
     this.box(this.room, 0.022, 0.018, 0.65, C.wood, -4.82, 1.052, -2.05);
     // C04 rules stand, fixed to the wall rather than highlighted in space.
     const rules = new THREE.Group(); rules.position.set(-5.7, 0, 1.6); rules.rotation.y = Math.PI / 2; this.room.add(rules);
     this.box(rules, 1.38, 1.42, 0.07, C.wood, 0, 1.76, 0);
-    this.sign(rules, this.lines('rules', ['経費・釣銭の取扱規程', '購買部']), 1.25, 1.27, 0, 1.76, 0.046);
+    this.sign(rules, this.lines('rules', ['会計からの案内', '購買部']), 1.25, 1.27, 0, 1.76, 0.046);
     this.box(this.room, 0.38, 0.63, 0.74, C.cream, -5.55, 0.35, 1.6, 0.035);
     this.collision(-5.6, 1.6, 0.4, 0.8);
     // C05 donation box: a clear front lets the deposited coins remain visible.
@@ -272,7 +272,7 @@ export class MoneyWorld {
     this.box(this.room, 0.65, 0.26, 0.014, 0xb6c9b6, 4.5, 0.98, -1.735);
     this.box(this.room, 0.76, 0.065, 0.58, C.wood, 4.5, 1.19, -2.02, 0.02);
     this.box(this.room, 0.33, 0.012, 0.056, C.dark, 4.5, 1.229, -1.97);
-    this.sign(this.room, this.lines('donationBox', ['地域のこども食堂', '募金箱']), 0.82, 0.39, 4.5, 1.59, -2.02);
+    this.sign(this.room, this.lines('donationBox', ['本棚づくり', '募金箱']), 0.82, 0.39, 4.5, 1.59, -2.02);
     this.collision(4.5, -1.9, 1.06, 0.95); this.shadow(this.room, 4.5, -1.9, 1.5, 1.3);
     this.donationCoins = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.075, 0.075, 0.025, 12), this.material(C.gold), 6);
     const transform = new THREE.Object3D();
@@ -285,9 +285,9 @@ export class MoneyWorld {
     this.sign(this.room, this.lines('order', ['本日の注文票', '総務部']), 0.6, 0.51, 3.4, 1.017, 1.6, true);
     this.cylinder(this.room, 0.055, 0.05, 0.2, C.cream, 3.95, 1.08, 1.7);
     this.collision(3.4, 1.6, 1.35, 0.8); this.shadow(this.room, 3.4, 1.6, 1.7, 1.1);
-    // C07 an old memo under the counter lip; no visible clue number or marker.
+    // C07 the boss's reply under the counter lip; no clue number or marker.
     this.box(this.room, 0.77, 0.53, 0.024, C.gold, 0.1, 0.74, -2.973, 0.01);
-    this.sign(this.room, this.lines('oldMemo', ['購買メモ', '昨日分']), 0.68, 0.43, 0.1, 0.74, -2.955, false, '#f1d98d');
+    this.sign(this.room, this.lines('oldMemo', ['上司からの', '返信']), 0.68, 0.43, 0.1, 0.74, -2.955, false, '#f1d98d');
     // Company settlement post: the wide slot is reachable from the front.
     this.box(this.room, 0.91, 1.23, 0.72, C.teal, -4.55, 0.65, 3.05, 0.075);
     this.box(this.room, 0.98, 0.1, 0.8, C.cream, -4.55, 1.3, 3.05, 0.035);
@@ -355,7 +355,7 @@ export class MoneyWorld {
 
   private buildActionProps(): void {
     this.leftHand.add(this.handEnvelope); this.envelope(this.handEnvelope, 0.6, 0.37); this.handEnvelope.position.set(0, 0.015, -0.1); this.handEnvelope.rotation.x = 0.17;
-    this.sign(this.handEnvelope, [this.plan?.envelopeId ?? 'E17', '領収書・釣銭'], 0.5, 0.26, 0, 0.021, 0, true, '#eddbb8');
+    this.sign(this.handEnvelope, [this.plan?.envelopeId ?? '買い出し代', '領収書・釣銭'], 0.5, 0.26, 0, 0.021, 0, true, '#eddbb8');
     this.body.add(this.wallet); this.wallet.position.set(0.2, 0.68, -0.29);
     this.box(this.wallet, 0.24, 0.17, 0.055, C.wood, 0, 0, 0, 0.02); this.box(this.wallet, 0.2, 0.018, 0.012, C.gold, 0, 0.045, -0.03);
     this.rightHand.add(this.coffee); this.coffee.position.set(-0.025, 0.015, -0.045); this.cup(this.coffee, 0, 0, 0, 0.85);
@@ -553,7 +553,7 @@ export class MoneyWorld {
       ending: this.cinematic, endingTime: this.endingTime,
       money: {
         choice: this.cinematic, changeYen: this.changeYen, paidYen: this.plan?.paidYen ?? 5000, purchaseYen: this.plan?.purchaseYen ?? 3200,
-        envelopeId: this.plan?.envelopeId ?? 'E17', disposition: this.disposition, carrying: this.carrying,
+        envelopeId: this.plan?.envelopeId ?? '買い出し代', disposition: this.disposition, carrying: this.carrying,
         coinCount: this.donatedCoins, countedCoins: this.countedCoins, tableCoins: this.tableCoins.filter(coin => coin.visible).length,
         envelopeOnTable: this.tableEnvelope.visible, receiptOnTable: this.receipt.visible,
         envelopeInHand: this.handEnvelope.visible, posting: this.postEnvelope.visible, coffeeInHand: this.coffee.visible,

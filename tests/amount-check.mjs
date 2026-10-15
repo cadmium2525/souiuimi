@@ -61,7 +61,7 @@ try{
       assert.equal(await p.locator('.ending-explanation').innerText(),c.endings[choice].explanation);assert.ok((await p.locator('.ending-explanation').innerText()).includes(WEAK_DEFINITION));
       assert.equal(await p.locator('.ending-line blockquote').first().innerText(),c.endings[choice].boss);
       if(correct==='B')assert.match(c.endings[choice].boss,/ごめん|取り違え/);
-      if(choice===correct){await p.locator('.ending-review summary').click();assert.equal(await p.locator('.ending-review article').count(),3);await shot(p,`ending-${correct.toLowerCase()}`);}
+      if(choice===correct){await p.locator('.ending-review summary').click();assert.equal(await p.locator('.ending-review article').count(),c.evidenceChain.length);await shot(p,`ending-${correct.toLowerCase()}`);}
       await action(p,'retry');assert.equal((await snap(p)).caseSeed,seed);assert.deepEqual((await snap(p)).found,[]);assert.equal(JSON.stringify(await p.evaluate(()=>window.__game.instance())),original);assert.equal(await p.evaluate(()=>window.__game.visuals().amount.outcome),'unassigned');
     }
     await action(p,'decision');await choose(p,correct);await finish(p);await action(p,'newcase');assert.equal((await snap(p)).phase,'INTRO');assert.notEqual((await snap(p)).caseSeed,seed);

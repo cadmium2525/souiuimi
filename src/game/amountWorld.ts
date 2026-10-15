@@ -157,7 +157,7 @@ export class AmountWorld {
   private get lowerYen(): number { return this.plan?.lowerYen ?? 9800; }
   private get upperYen(): number { return this.plan?.upperYen ?? 10300; }
   private get requiredYen(): number { return this.plan?.requiredYen ?? 10300; }
-  private get requestId(): string { return this.plan?.requestId ?? 'R17'; }
+  private get requestId(): string { return this.plan?.requestId ?? '備品代'; }
   private amount(choice: Choice): number { return choice === 'B' ? this.upperYen : this.lowerYen; }
   private yen(value: number): string { return `¥${value.toLocaleString('ja-JP')}`; }
 
@@ -214,19 +214,19 @@ export class AmountWorld {
       const envelope = this.tableEnvelopes[choice]; envelope.position.set(0.62 + index * 0.67, 0.828, -0.4); this.envelope(envelope, 0.58, 0.43, this.amount(choice), false);
     }
     // C02 current shift sheet, C03 archival records on separate shelves.
-    this.shelf(-4.8, -2, 1.3, 0.9); this.box(this.room, 1.0, 0.035, 0.7, C.teal, -4.8, 0.99, -2); this.sign(this.room, this.lines('assignments', ['本日の担当表', '催事準備室']), 0.92, 0.62, -4.8, 1.011, -2, true);
+    this.shelf(-4.8, -2, 1.3, 0.9); this.box(this.room, 1.0, 0.035, 0.7, C.teal, -4.8, 0.99, -2); this.sign(this.room, this.lines('assignments', ['以前のチャット', '部長とのやりとり']), 0.92, 0.62, -4.8, 1.011, -2, true);
     this.shelf(-4.9, 1.6, 1.3, 0.9);
     this.box(this.room, 1.02, 0.07, 0.72, C.blush, -4.9, 1.0, 1.6); this.sign(this.room, this.lines('history', ['過去の立替記録', '受付保管']), 0.95, 0.65, -4.9, 1.04, 1.6, true);
     this.box(this.room, 0.045, 0.01, 0.64, C.wood, -4.9, 1.047, 1.6);
     // C05 a counter-side clipboard, C06 previous-day memo.
     this.shelf(4.5, -1.9, 1.06, 0.9); this.box(this.room, 0.75, 0.03, 0.66, C.sage, 4.5, 1.0, -1.9); this.sign(this.room, this.lines('counter', ['備品受取案内', '受付時間']), 0.67, 0.57, 4.5, 1.019, -1.9, true);
-    this.shelf(3.4, 1.6, 1.35, 0.8); this.box(this.room, 0.7, 0.02, 0.58, C.paper, 3.4, 0.99, 1.6); this.sign(this.room, this.lines('oldMemo', ['前日のメモ', '引継ぎ']), 0.62, 0.5, 3.4, 1.003, 1.6, true);
+    this.shelf(3.4, 1.6, 1.35, 0.8); this.box(this.room, 0.7, 0.02, 0.58, C.paper, 3.4, 0.99, 1.6); this.sign(this.room, this.lines('oldMemo', ['経理から', '封筒のご案内']), 0.62, 0.5, 3.4, 1.003, 1.6, true);
     // C07 is an ordinary taped proofreading memo, without a floating hint.
     this.box(this.room, 0.9, 0.57, 0.025, C.gold, 0.1, 0.75, -3.11); this.sign(this.room, this.lines('dictionary', ['校正メモ', '表記の確認']), 0.81, 0.47, 0.1, 0.75, -3.09, false, '#f1d98d');
   }
   private envelope(parent: THREE.Object3D, width: number, depth: number, amount: number, assigned = true): void {
     this.box(parent, width, 0.033, depth, 0xe1c69b, 0, 0, 0, 0.008);
-    this.sign(parent, [assigned ? this.requestId : '依頼番号：＿＿', this.yen(amount)], width * 0.84, depth * 0.7, 0, 0.021, 0, true, '#eddbb8');
+    this.sign(parent, [assigned ? this.requestId : '立替金', this.yen(amount)], width * 0.84, depth * 0.7, 0, 0.021, 0, true, '#eddbb8');
     const seam = this.box(parent, width * 0.4, 0.006, 0.009, C.wood, -width * 0.12, 0.021, -depth * 0.39); seam.rotation.y = 0.4;
   }
 

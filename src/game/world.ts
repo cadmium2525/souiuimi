@@ -415,7 +415,7 @@ export class OfficeWorld {
     // Decorative beams retain the dollhouse silhouette without a ceiling.
     this.cuboid(this.office, 12.26, 0.15, 0.27, PALETTE.wood, 0, 3.42, -4.5);
     this.cuboid(this.office, 0.27, 0.15, 9.26, PALETTE.wood, -6, 3.42, 0);
-    this.sign(this.office, `S O U I U  /  ${this.officeUnit ?? 'OFFICE'}`, 2.8, 0.42, PALETTE.teal, -1.65, 2.78, -4.28);
+    this.sign(this.office, this.officeUnit ?? 'よしなにオフィス', 2.8, 0.42, PALETTE.teal, -1.65, 2.78, -4.28);
     this.sign(this.corridorWalls, 'STORAGE  →', 1.6, 0.35, PALETTE.teal, 7.55, 1.14, -0.37);
     // Structural feet support the miniature platform.
     for (const x of [-5.1, 5.1]) for (const z of [-3.7, 3.7]) {

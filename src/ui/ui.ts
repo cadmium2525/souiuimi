@@ -66,7 +66,9 @@ export class GameUI {
       const fromTouch = touchClick.pointerType === 'touch' || touchClick.sourceCapabilities?.firesTouchEvents === true;
       const recentTouch = this.suppressedTouch && performance.now() < this.suppressedTouch.until;
       const compatibilityClick = event.detail > 0 && this.lastPointerType === 'touch' && this.suppressedTouch && Math.hypot(event.clientX - this.suppressedTouch.x, event.clientY - this.suppressedTouch.y) < 32;
-      if (recentTouch && (fromTouch || compatibilityClick)) { event.preventDefault(); event.stopPropagation(); return; }
+      // A scene rebuild can delay the compatibility click beyond the timeout.
+      // Touch releases are already handled above, even when the DOM changes.
+      if (fromTouch || (recentTouch && compatibilityClick)) { event.preventDefault(); event.stopPropagation(); return; }
       this.onAction(target.dataset.action as UIAction, target.dataset.detail);
     });
     root.addEventListener('keydown', (event) => {
@@ -243,7 +245,7 @@ export class GameUI {
     const correct = choice === this.stage.copy.correctChoice;
     const generated = snapshot.caseSeed != null;
     const generatedReview = 'evidenceChain' in this.stage && Array.isArray(this.stage.evidenceChain) ? this.stage.evidenceChain as string[] : [];
-    const reviewIds = generated ? generatedReview : this.stage.id === 'stage01' ? ['C03', 'C05', 'C06'] : this.stage.id === 'stage03' ? ['C01', 'C03', 'C04'] : this.stage.id === 'stage04' || this.stage.id === 'stage05' ? ['C01', 'C02', 'C03'] : ['C03', 'C06', 'C07'];
+    const reviewIds = generated ? generatedReview : this.stage.id === 'stage01' ? ['C03', 'C05', 'C06'] : this.stage.id === 'stage03' ? ['C03', 'C04', 'C07'] : this.stage.id === 'stage05' ? ['C02', 'C03', 'C06'] : this.stage.id === 'stage04' ? ['C01', 'C02', 'C03'] : ['C03', 'C06', 'C07'];
     const highlighted = !generated && this.stage.id === 'stage01' && choice === 'A'
       ? ['C03', 'C05', 'C06', 'C04', 'C07', 'C02', 'C01'].map((id) => missed.find((clue) => clue.id === id)).filter((clue): clue is Clue => Boolean(clue)).slice(0, 2)
       : reviewIds.map((id) => clues.find((clue) => clue.id === id)).filter((clue): clue is Clue => Boolean(clue));

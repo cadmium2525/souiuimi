@@ -363,7 +363,7 @@ export class StationWorld {
       this.cuboid(kiosk, 0.2, 0.06, 0.008, i % 2 ? COLORS.orange : COLORS.sage, -0.21, 1.4 - i * 0.22, 0.204);
       this.cuboid(kiosk, 0.28, 0.035, 0.008, COLORS.blue, 0.19, 1.4 - i * 0.22, 0.204);
     }
-    if (this.plan) this.label(kiosk, this.signage('timetable', ['標準時刻', `${this.formatMinutes(this.plan.departureMinutes)} 発`, `${this.formatMinutes(this.plan.departureMinutes + this.plan.travelMinutes)} 着`]), 0.94, 0.85, 0, 1.28, 0.215);
+    if (this.plan) this.label(kiosk, this.signage('timetable', ['発車時刻', `${this.formatMinutes(this.plan.departureMinutes)} 発`, `${this.formatMinutes(this.plan.departureMinutes + this.plan.travelMinutes)} 着`]), 0.94, 0.85, 0, 1.28, 0.215);
     this.cuboid(kiosk, 1.36, 0.09, 0.57, COLORS.sage, 0, 2.24, 0);
     this.collision(4.7, -2.4, 1.24, 0.4);
 
@@ -379,8 +379,8 @@ export class StationWorld {
     for (let i = 0; i < 5; i++) this.cuboid(recorder, 0.018, 0.04 + (i % 3) * 0.035, 0.01, COLORS.paper, -0.14 + i * 0.07, 1.25, -0.033);
     this.cylinder(recorder, 0.06, 0.06, 0.02, COLORS.orange, 0.19, 0.975, 0.17);
     this.cuboid(recorder, 0.35, 0.012, 0.27, COLORS.paper, -0.22, 0.962, 0.17);
-    this.label(recorder, this.plan ? ['会議記録'] : ['音声メモ'], 0.72, 0.2, 0, 0.65, 0.351);
-    if (this.plan) this.label(recorder, this.signage('referenceClock', ['会議室時計']), 0.44, 0.22, 0, 1.25, -0.02, { background: '#a6c6c8' });
+    this.label(recorder, this.plan ? ['部長の手帳'] : ['音声メモ'], 0.72, 0.2, 0, 0.65, 0.351);
+    if (this.plan) this.label(recorder, this.signage('referenceClock', ['部長の手帳']), 0.44, 0.22, 0, 1.25, -0.02, { background: '#a6c6c8' });
     this.collision(-5.1, 1.4, 1.0, 0.72);
 
     // C05: a weather panel on a compact ticket-information stand.
@@ -407,7 +407,7 @@ export class StationWorld {
     this.softBox(this.delivery, 0.79, 0.62, 0.63, 0xc99662, 0, 0.36, 0, 0.02);
     this.cuboid(this.delivery, 0.14, 0.014, 0.66, 0xe2c295, 0, 0.681, 0);
     this.cuboid(this.delivery, 0.14, 0.62, 0.017, 0xe2c295, 0, 0.37, 0.327);
-    this.label(this.delivery, this.signage('deliveryLabel', this.plan ? ['標準時刻', `${this.formatMinutes(this.plan.deliveryOpen)}～${this.formatMinutes(this.plan.deliveryClose)}`] : ['展示用']), this.plan ? 0.55 : 0.4, this.plan ? 0.29 : 0.19, this.plan ? -0.06 : -0.14, 0.41, 0.341);
+    this.label(this.delivery, this.signage('deliveryLabel', this.plan ? ['受取時間', `${this.formatMinutes(this.plan.deliveryOpen)}～${this.formatMinutes(this.plan.deliveryClose)}`] : ['展示用']), this.plan ? 0.55 : 0.4, this.plan ? 0.29 : 0.19, this.plan ? -0.06 : -0.14, 0.41, 0.341);
     this.collision(-0.8, 0.6, 0.8, 0.64);
 
     // C07: bus-stop access on the right-hand walkway.

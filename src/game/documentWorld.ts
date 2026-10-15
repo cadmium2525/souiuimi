@@ -91,7 +91,7 @@ export class DocumentWorld {
     this.reset(); this.showTitle(0);
   }
 
-  private get packetId() { return this.plan?.packetId ?? 'P17'; }
+  private get packetId() { return this.plan?.packetId ?? '研修資料'; }
   private get setCount() { return this.plan?.setCount ?? 6; }
   private get pageCount() { return this.plan?.pageCount ?? 240; }
   private get intendedChoice(): Choice { return this.plan?.intendedChoice ?? 'C'; }
@@ -192,7 +192,7 @@ export class DocumentWorld {
     this.collision(0, -0.1, 3.15, 1.5); this.shadow(this.room, 0, -0.1, 3.8, 2.1);
     this.box(this.room, 0.68, 0.025, 0.73, C.paper, -1, 0.825, 0.1); this.sign(this.room, this.lines('request', ['依頼票', this.packetId]), 0.62, 0.65, -1, 0.841, 0.1, true);
     this.paperStack(this.room, 0.64, 0.16, 0.75, 0.95, 0.817, -0.4); this.sign(this.room, this.lines('source', ['元資料', this.packetId]), 0.59, 0.56, 0.95, 0.985, -0.4, true);
-    for (const [x, z, key, fallback] of [[-4.8, -2, 'assignments', '作業予定表'], [-4.9, 1.6, 'intakes', '受付記録'], [4.5, -1.9, 'counter', '受渡案内'], [3.4, 1.6, 'oldMemo', '前日の記録']] as const) {
+    for (const [x, z, key, fallback] of [[-4.8, -2, 'assignments', '午後の予定'], [-4.9, 1.6, 'intakes', '当日の案内'], [4.5, -1.9, 'counter', '受取相手の伝言'], [3.4, 1.6, 'oldMemo', '原本の保管メモ']] as const) {
       this.shelf(x, z); this.box(this.room, 0.95, 0.035, 0.65, key === 'intakes' ? C.blush : C.sage, x, 0.99, z); this.sign(this.room, this.lines(key, [fallback, '資料作業室']), 0.88, 0.58, x, 1.012, z, true);
     }
     // C07 is a physical clipboard on a low back workbench, without an advance marker.

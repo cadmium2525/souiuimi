@@ -74,13 +74,27 @@ try {
     await activate(p, '[data-action=retry]', touch); assert.equal((await snapshot(p)).phase, 'EXPLORE');
     await context.close(); pass(`document clue, journal, three choices and ending scroll ${width}x${height}`);
   }
+  const delayedContext = await browser.newContext({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true });
+  const delayed = await delayedContext.newPage(); delayed.on('pageerror', e => errors.push(e.message));
+  const delayedUrl = new URL(base); delayedUrl.searchParams.set('qa', '1'); delayedUrl.searchParams.set('stage', 'stage04'); delayedUrl.searchParams.set('seed', '0');
+  await delayed.goto(delayedUrl.href); await delayed.waitForFunction(() => window.__game?.snapshot().phase === 'TITLE');
+  await delayed.locator('[data-action=start]').tap(); assert.equal((await snapshot(delayed)).phase, 'INTRO');
+  // Slow scene setup can delay a browser's compatibility click past 900ms.
+  await delayed.waitForTimeout(1050);
+  await delayed.evaluate(() => {
+    const button = document.querySelector('[data-action=explore]'); const b = button.getBoundingClientRect();
+    button.dispatchEvent(new PointerEvent('click', { bubbles: true, cancelable: true, pointerType: 'touch', detail: 1, clientX: b.x + b.width / 2, clientY: b.y + b.height / 2 }));
+  });
+  assert.equal((await snapshot(delayed)).phase, 'INTRO', 'late touch click must not skip the conversation');
+  await delayed.locator('[data-action=explore]').tap(); assert.equal((await snapshot(delayed)).phase, 'EXPLORE');
+  await delayedContext.close(); pass('delayed touch compatibility click cannot skip the conversation; the next real tap works');
   const p = await browser.newPage({ viewport: { width: 390, height: 844 } });
   p.on('pageerror', e => errors.push(e.message));
   const fixture = new URL(base); fixture.searchParams.set('qa', '1'); fixture.searchParams.set('stage', 'stage05'); fixture.searchParams.set('fixture', 'original');
   await p.goto(fixture.href); await p.waitForFunction(() => window.__game?.snapshot().phase === 'TITLE');
   await p.locator('[data-action=start]').click(); await p.locator('[data-action=explore]').click(); await p.locator('[data-action=decision]').click(); await p.locator('[data-action=choose][data-detail=C]').click();
   await p.evaluate(() => window.__game.cinematic(30)); await p.waitForFunction(() => window.__game.snapshot().phase === 'ENDING'); await activate(p, '.ending-review summary', false);
-  assert.deepEqual(await p.locator('.ending-review .review-number').allTextContents(), ['01', '02', '03']); await p.close(); pass('original document fixture reviews its own request, routing and conditions');
+  assert.deepEqual(await p.locator('.ending-review .review-number').allTextContents(), ['02', '03', '06']); await p.close(); pass('original document fixture reviews its purpose, recipient and treatment of originals');
   assert.deepEqual(errors, []); pass('five-case UI has no uncaught browser exceptions');
 } finally {
   await fs.writeFile('artifacts/document-ui-results.json', JSON.stringify({ base, browser: await browser.version(), results, errors, samples }, null, 2));

@@ -16,50 +16,44 @@ export interface StationCasePlan {
   displayedChoices: Record<Choice, number>; walkMinutes: number; travelMinutes: number;
   deliveryOpen: number; deliveryClose: number; signage?: Record<string, string>;
 }
-export interface OfficeAssignment { date: string; unit: string; contract: string; }
-export interface OfficeContract { id: string; requirement: Choice; condition: string; }
 export interface OfficeCaseFacts {
-  kind: 'office'; today: string; currentUnit: string;
-  assignments: OfficeAssignment[]; contracts: OfficeContract[];
-  crane: { date: string; unit: string }; container: { date: string; unit: string };
-  note: { date: string; unit: string; boxes: number };
+  kind: 'office'; today: string; roomName: string; occasion: string;
+  nextUse: 'meeting' | 'empty-space' | 'next-site';
+  furniture: 'continue' | 'return-loan' | 'preserve-layout';
+  site: 'stays' | 'cleared'; visitorCount: number;
 }
 export interface StationCaseFacts {
-  kind: 'station'; today: string; referenceClock: string; plazaClock: string;
-  spokenHour: number; interpretation: 'ten-before-hour' | 'before-ten-past';
-  meetingEndReference: number; bossWalkMinutes: number; oldMemoDate: string; weatherMinutes: number;
+  kind: 'station'; today: string; spokenHour: number;
+  interpretation: 'ten-before-hour' | 'five-before-ten-past' | 'one-before-ten-past';
+  previousMeetings: Array<{ occasion: string; spokenHour: number; arrivedMinutes: number }>;
+  weatherMinutes: number;
 }
 export interface MoneyCasePlan {
   changeYen: number; paidYen: number; purchaseYen: number; envelopeId: string;
   signage: Record<string, string>;
 }
 export interface MoneyCaseFacts {
-  kind: 'money'; today: string; envelopeId: string; paidYen: number; purchaseYen: number;
-  assignments: Array<{ date: string; envelope: string; fund: string }>;
-  funds: Array<{ id: string; source: string; requirement: Choice; condition: string }>;
-  oldNote: { date: string; envelope: string };
+  kind: 'money'; today: string; envelopeName: string; occasion: string; paidYen: number; purchaseYen: number;
+  source: 'company-advance' | 'boss-private' | 'group-fund';
+  arrangement: 'settle-company' | 'personal-thanks' | 'agreed-donation';
 }
 export interface AmountCasePlan {
   baseYen: number; lowerYen: number; upperYen: number; requiredYen: number; requestId: string;
   signage: Record<string, string>;
 }
 export interface AmountCaseFacts {
-  kind: 'amount'; today: string; requestId: string; baseYen: number;
+  kind: 'amount'; today: string; purpose: string; speakerName: string; baseYen: number;
   lowerYen: number; upperYen: number; requiredYen: number;
-  requests: Array<{ date: string; id: string; speaker: string }>;
-  history: Array<{ date: string; speaker: string; baseYen: number; actualYen: number }>;
+  history: Array<{ occasion: string; baseYen: number; actualYen: number }>;
 }
 export interface DocumentCasePlan {
   packetId: string; setCount: number; pageCount: number; intendedChoice: Choice;
   signage: Record<string, string>;
 }
 export interface DocumentCaseFacts {
-  kind: 'document'; today: string; packetId: string; setCount: number; pageCount: number;
-  assignments: Array<{ date: string; packet: string; destination: string; receipt: string }>;
-  intakes: Array<{
-    receipt: string; destination: string; content: 'key-points' | 'full-copy' | 'all-originals';
-    delivery: 'single-page' | 'per-person' | 'single-load'; condition: string;
-  }>;
+  kind: 'document'; today: string; topic: string; setCount: number; pageCount: number;
+  use: 'short-talk' | 'individual-reading' | 'archive-transfer';
+  audience: 'speaker' | 'attendees' | 'storage-staff'; originals: 'stay' | 'transfer';
 }
 export interface CaseInstance extends StageDefinition {
   caseSeed: number; correctChoice: Choice; evidenceChain: string[];
