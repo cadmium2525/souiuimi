@@ -11,11 +11,13 @@ const port = Number(process.env.PWA_TEST_PORT || 5185);
 const origin = `http://127.0.0.1:${port}`;
 const base = `${origin}${prefix}`;
 const distRoot = path.resolve('dist');
+const audioFile = 'audio/bossa-antigua.mp3';
+const audioBytes = 9069455;
 const results = [], errors = [], responseErrors = [], observations = {};
 const files = new Map();
 let revision = 1, browser, context;
 const pass = name => { results.push(name); console.log(`PASS ${name}`); };
-const fileType = file => ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json; charset=utf-8', '.json': 'application/json; charset=utf-8', '.md': 'text/plain; charset=utf-8' }[path.extname(file)] || 'application/octet-stream');
+const fileType = file => ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.mp3': 'audio/mpeg', '.webmanifest': 'application/manifest+json; charset=utf-8', '.json': 'application/json; charset=utf-8', '.md': 'text/plain; charset=utf-8' }[path.extname(file)] || 'application/octet-stream');
 const pngSize = data => {
   assert.equal(data.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   return [data.readUInt32BE(16), data.readUInt32BE(20)];
@@ -53,15 +55,13 @@ const title = async page => {
   if (await page.locator('#ui').getAttribute('data-phase') !== 'title') await action(page, 'title');
   await phase(page, 'title');
 };
-const start = async (page, id) => {
-  await page.locator(`[data-action="stage"][data-detail="${id}"]`).click();
-  assert.equal(await page.locator('#ui').getAttribute('data-stage'), id);
-  await action(page, 'start'); await phase(page, 'intro');
+const explore = async page => {
+  await phase(page, 'intro');
   await page.waitForFunction(() => [...document.querySelectorAll('.boss-portrait')].length > 0 && [...document.querySelectorAll('.boss-portrait')].every(img => img.complete && img.naturalWidth > 0));
   await action(page, 'explore'); await phase(page, 'explore');
-  assert.equal(await page.locator('#ui').getAttribute('data-stage'), id);
   assert.ok(await page.locator('#world').evaluate(canvas => canvas.width > 0 && canvas.height > 0));
 };
+const start = async page => { await action(page, 'start'); await explore(page); };
 const timer = async page => {
   const [minutes, seconds] = (await page.locator('#timer-value').innerText()).split(':').map(Number);
   return minutes * 60 + seconds;
@@ -70,7 +70,43 @@ const cacheState = page => page.evaluate(async () => Object.fromEntries(await Pr
 const shot = (page, name) => page.screenshot({ path: `artifacts/pwa-${name}.png`, animations: 'disabled' });
 const watch = page => {
   page.on('pageerror', error => errors.push(error.message));
-  page.on('response', response => { if (response.status() >= 400) responseErrors.push(`${response.status()} ${response.url()}`); });
+  page.on('response', response => {
+    const expectedRangeError = response.status() === 416 && new URL(response.url()).searchParams.get('pwa-range') === 'unsatisfiable';
+    if (response.status() >= 400 && !expectedRangeError) responseErrors.push(`${response.status()} ${response.url()}`);
+  });
+};
+const captureAudio = () => {
+  const NativeAudio = window.Audio;
+  window.__testAudio = [];
+  window.Audio = function (...args) { const audio = new NativeAudio(...args); window.__testAudio.push(audio); return audio; };
+  window.Audio.prototype = NativeAudio.prototype;
+  Object.setPrototypeOf(window.Audio, NativeAudio);
+};
+const audioState = page => page.evaluate(() => window.__testAudio.map(audio => ({ src: audio.src, currentTime: audio.currentTime, paused: audio.paused, error: audio.error?.code ?? null })));
+const checkAudioRanges = async page => {
+  const checked = await page.evaluate(async ({ base, audioFile, audioBytes }) => {
+    const url = new URL(audioFile, base).href;
+    const cached = await caches.match(url);
+    if (!cached) throw new Error('complete recording is absent from the cache');
+    const original = new Uint8Array(await cached.arrayBuffer());
+    const ranges = [];
+    for (const [name, header, start, end] of [['first', 'bytes=0-127', 0, 127], ['suffix', 'bytes=-64', audioBytes - 64, audioBytes - 1], ['open', `bytes=${audioBytes - 64}-`, audioBytes - 64, audioBytes - 1]]) {
+      const response = await fetch(url, { headers: { Range: header } });
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      ranges.push({ name, status: response.status, range: response.headers.get('Content-Range'), length: response.headers.get('Content-Length'), acceptRanges: response.headers.get('Accept-Ranges'), bodyLength: bytes.length, matches: bytes.length === end - start + 1 && bytes.every((value, index) => value === original[start + index]) });
+    }
+    const unsatisfiable = await fetch(`${url}?pwa-range=unsatisfiable`, { headers: { Range: `bytes=${audioBytes}-` } });
+    return { cachedBytes: original.length, ranges, unsatisfiable: { status: unsatisfiable.status, range: unsatisfiable.headers.get('Content-Range'), bodyLength: (await unsatisfiable.arrayBuffer()).byteLength } };
+  }, { base, audioFile, audioBytes });
+  assert.equal(checked.cachedBytes, audioBytes);
+  for (const [index, { start, end }] of [{ start: 0, end: 127 }, { start: audioBytes - 64, end: audioBytes - 1 }, { start: audioBytes - 64, end: audioBytes - 1 }].entries()) {
+    const range = checked.ranges[index];
+    assert.equal(range.status, 206); assert.equal(range.range, `bytes ${start}-${end}/${audioBytes}`);
+    assert.equal(range.length, String(end - start + 1)); assert.equal(range.bodyLength, end - start + 1);
+    assert.equal(range.acceptRanges, 'bytes'); assert.equal(range.matches, true);
+  }
+  assert.deepEqual(checked.unsatisfiable, { status: 416, range: `bytes */${audioBytes}`, bodyLength: 0 });
+  return checked;
 };
 
 await fs.mkdir('artifacts', { recursive: true });
@@ -98,6 +134,7 @@ try {
 
   browser = await chromium.launch({ channel: 'chrome', args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] });
   context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: 'allow' });
+  await context.addInitScript(captureAudio);
   const page = await context.newPage(); watch(page);
   await page.goto(base); await phase(page, 'title');
   assert.equal(await page.evaluate(() => typeof window.__game), 'undefined');
@@ -118,7 +155,7 @@ try {
   const initialCacheNames = Object.keys(observations.initialCaches);
   assert.ok(initialCacheNames.some(name => name.startsWith('souiu-imi-precache-')));
   const cached = Object.values(observations.initialCaches).flat();
-  for (const required of ['index.html', 'manifest.webmanifest', 'characters/boss.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png']) assert.ok(cached.includes(`${prefix}${required}`), `precache ${required}`);
+  for (const required of ['index.html', 'manifest.webmanifest', 'characters/boss.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', audioFile]) assert.ok(cached.includes(`${prefix}${required}`), `precache ${required}`);
   assert.ok(cached.some(name => /\/assets\/.*\.js$/.test(name)));
   assert.ok(cached.some(name => /\/assets\/.*\.css$/.test(name)));
   const manifestResponse = await page.request.get(`${base}manifest.webmanifest`);
@@ -146,36 +183,57 @@ try {
   await context.setOffline(true);
   await page.reload(); await phase(page, 'title');
   assert.equal(await page.evaluate(() => navigator.onLine), false);
-  assert.equal(await page.locator('.stage-pick').count(), 5);
-  for (const id of ['stage01', 'stage02', 'stage03', 'stage04', 'stage05']) {
-    await start(page, id);
+  assert.equal(await page.locator('.stage-pick').count(), 0);
+  assert.equal(await page.locator('[data-action="start"]').count(), 1);
+  observations.audioRanges = await checkAudioRanges(page);
+  pass('offline precached acoustic recording serves exact first, suffix and open byte ranges plus an expected 416');
+
+  await action(page, 'start');
+  const played = [];
+  for (let index = 0; index < 5; index++) {
+    await explore(page);
+    const id = await page.locator('#ui').getAttribute('data-stage');
+    assert.ok(!played.includes(id), 'a completed case never repeats within a run');
+    played.push(id);
+    assert.equal(await page.evaluate(() => typeof window.__game), 'undefined');
+    assert.match(await page.locator('[data-run-progress]').innerText(), new RegExp(`${index + 1}/5`));
+    if (index === 0) {
+      const before = await timer(page); await page.waitForTimeout(1700); assert.ok(await timer(page) < before);
+      await page.waitForFunction(() => window.__testAudio.some(audio => !audio.paused && audio.currentTime > 0.2 && !audio.error));
+      observations.offlineAudioStart = await audioState(page);
+    }
+    if (id === 'stage05') await shot(page, 'offline-case5-explore');
     await action(page, 'decision'); await phase(page, 'decision');
     assert.equal(await page.locator('.choice-button').count(), id === 'stage04' ? 2 : 3);
     if (id === 'stage05') await shot(page, 'offline-case5-choices');
-    await title(page);
+    const choice = id === 'stage04' ? 'A' : 'C';
+    await page.locator(`[data-action="choose"][data-detail="${choice}"]`).click();
+    await phase(page, 'cinematic');
+    if (id === 'stage05') { await page.waitForTimeout(4500); await shot(page, 'offline-case5-cinematic'); }
+    await page.locator('#ui[data-phase="ending"]').waitFor({ timeout: 30000 });
+    assert.ok((await page.locator('.ending-explanation').innerText()).length > 0);
+    assert.equal(await page.locator('[data-action="retry"]').count(), 0);
+    if (id === 'stage05') await shot(page, 'offline-case5-ending');
+    await action(page, 'newcase');
+    await phase(page, index < 4 ? 'intro' : 'results');
   }
-  pass('offline reload boots all five stages, cached boss portraits and their normal choice counts');
-
-  await page.goto(`${base}?stage=stage05&installed=1`); await phase(page, 'title');
-  assert.equal(await page.locator('#ui').getAttribute('data-stage'), 'stage05');
-  await start(page, 'stage05');
-  const before = await timer(page); await page.waitForTimeout(1700); assert.ok(await timer(page) < before);
-  await shot(page, 'offline-case5-explore');
-  await action(page, 'decision'); await page.locator('[data-action="choose"][data-detail="C"]').click();
-  await phase(page, 'cinematic'); await page.waitForTimeout(4500); await shot(page, 'offline-case5-cinematic');
-  await page.locator('#ui[data-phase="ending"]').waitFor({ timeout: 25000 });
-  assert.ok((await page.locator('.ending-explanation').innerText()).length > 0);
-  await shot(page, 'offline-case5-ending');
-  await action(page, 'newcase'); await phase(page, 'intro');
-  await action(page, 'explore'); await phase(page, 'explore');
-  pass('offline direct navigation, countdown, Case 5 physical-bundle ending and next randomized request');
+  observations.offlineOrder = played;
+  assert.deepEqual([...played].sort(), ['stage01', 'stage02', 'stage03', 'stage04', 'stage05']);
+  assert.equal(await page.locator('.result-row').count(), 5);
+  observations.offlineAudioEnd = await audioState(page);
+  assert.equal(observations.offlineAudioEnd.length, 1);
+  assert.ok(observations.offlineAudioEnd[0].currentTime > observations.offlineAudioStart[0].currentTime + 1);
+  assert.equal(observations.offlineAudioEnd[0].paused, false); assert.equal(observations.offlineAudioEnd[0].error, null);
+  await shot(page, 'offline-five-case-results');
+  await action(page, 'start'); await explore(page);
+  pass('offline normal play completes five unique cases, natural cinematics and results with continuous acoustic BGM');
 
   await context.setOffline(false);
   await page.waitForFunction(() => navigator.onLine);
   assert.equal((await page.request.get(`${base}manifest.webmanifest`)).status(), 200);
   const other = await context.newPage(); watch(other);
   await other.goto(base); await phase(other, 'title');
-  await start(other, 'stage01');
+  await start(other);
   let otherNavigations = 0;
   other.on('framenavigated', frame => { if (frame === other.mainFrame()) otherNavigations++; });
   await page.bringToFront();
@@ -211,7 +269,7 @@ try {
   assert.ok(Object.keys(observations.updatedCaches).some(name => !initialCacheNames.includes(name)));
   assert.ok(initialCacheNames.every(name => Object.hasOwn(observations.updatedCaches, name)), 'one prior version remains available');
   await other.close();
-  await start(page, 'stage05');
+  await start(page);
   pass('network recovery and waiting update preserve active games in both tabs; title update reloads only the requesting tab once');
 
   await title(page);
@@ -232,7 +290,7 @@ try {
   pass('third version cleans obsolete caches while retaining the active and immediately previous version');
 
   await context.setOffline(true); await page.reload(); await phase(page, 'title');
-  await start(page, 'stage05'); await shot(page, 'updated-offline-mobile');
+  await start(page); await shot(page, 'updated-offline-mobile');
   await context.setOffline(false);
   await title(page); await page.setViewportSize({ width: 1440, height: 900 }); await shot(page, 'updated-desktop-title');
   assert.deepEqual(errors, []); assert.deepEqual(responseErrors, []);

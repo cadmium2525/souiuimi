@@ -13,7 +13,7 @@ const server = http.createServer(async (req, res) => {
   if (!file.startsWith(distRoot + path.sep)) { res.writeHead(403); res.end(); return; }
   try {
     const data = await fs.readFile(file);
-    const contentType = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.md': 'text/plain; charset=utf-8' }[path.extname(file)] || 'application/octet-stream';
+    const contentType = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.mp3': 'audio/mpeg', '.md': 'text/plain; charset=utf-8' }[path.extname(file)] || 'application/octet-stream';
     res.writeHead(200, { 'Content-Type': contentType }); res.end(data);
   } catch { res.writeHead(404); res.end(); }
 });
@@ -23,7 +23,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   const failures = []; page.on('pageerror', e => failures.push(e.message));
   page.on('response', r => { if (r.status() >= 400) failures.push(`${r.status()} ${r.url()}`); });
-  await page.goto('http://127.0.0.1:5184/souiu-imi/?qa=1');
+  await page.goto('http://127.0.0.1:5184/souiu-imi/?qa=1&stage=stage01');
   await page.waitForFunction(() => window.__game?.snapshot().phase === 'TITLE');
   await page.locator('[data-action="start"]').click();
   await page.waitForFunction(() => [...document.querySelectorAll('.boss-portrait')].every(img => img.complete && img.naturalWidth > 0));
@@ -69,6 +69,17 @@ try {
   assert.deepEqual(failures, []);
   await page.screenshot({ path: 'artifacts/document-production-subpath.png' });
   console.log('PASS document case with three choices under repository subpath');
+  await page.goto('http://127.0.0.1:5184/souiu-imi/?qa=1');
+  await page.waitForFunction(() => window.__game?.snapshot().phase === 'TITLE');
+  assert.equal(await page.locator('.stage-pick').count(), 0);
+  assert.match(await page.locator('[data-action=start]').innerText(), /ゲームスタート/);
+  assert.equal(await page.locator('[data-action=music]').getAttribute('aria-pressed'), 'true');
+  await page.locator('[data-action=start]').click();
+  assert.equal(await page.evaluate(() => window.__game.snapshot().mode), 'run');
+  assert.equal(await page.evaluate(() => window.__game.snapshot().run.total), 5);
+  await page.waitForFunction(() => window.__game.music().readyState >= 2 && !window.__game.music().paused);
+  assert.deepEqual(failures, []);
+  console.log('PASS normal five-case game and bundled BGM start under repository subpath');
   await page.close();
 
   const fallback = await browser.newPage();

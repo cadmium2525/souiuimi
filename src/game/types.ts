@@ -1,11 +1,13 @@
-export type Phase = 'TITLE' | 'INTRO' | 'EXPLORE' | 'INSPECT' | 'MENU' | 'JOURNAL' | 'DECISION' | 'CINEMATIC' | 'ENDING';
+export type Phase = 'TITLE' | 'INTRO' | 'EXPLORE' | 'INSPECT' | 'MENU' | 'JOURNAL' | 'DECISION' | 'CINEMATIC' | 'ENDING' | 'RESULTS';
 export type Choice = 'A' | 'B' | 'C';
 export type StageId = 'stage01' | 'stage02' | 'stage03' | 'stage04' | 'stage05';
 export interface Clue { id: string; title: string; category: string; body: string; x: number; z: number; radius: number; symbol: string; }
 export interface Ending { title: string; subtitle: string; boss: string; player: string; explanation: string; }
-export interface Snapshot { stageId: StageId; caseSeed: number | null; phase: Phase; remaining: number; found: string[]; nearest: string | null; inspected: string | null; choice: Choice | null; sound: boolean; lowQuality: boolean; timedOut: boolean; }
+export interface RunResult { stageId: StageId; caseSeed: number | null; choice: Choice; choiceLabel: string; correctChoice: Choice; correct: boolean; found: number; elapsed: number; timedOut: boolean; }
+export interface RunSnapshot { completed: RunResult[]; total: number; current: number; }
+export interface Snapshot { stageId: StageId; caseSeed: number | null; phase: Phase; remaining: number; found: string[]; nearest: string | null; inspected: string | null; choice: Choice | null; sound: boolean; music: boolean; lowQuality: boolean; timedOut: boolean; mode: 'run' | 'single'; run: RunSnapshot | null; }
 export interface Collider { minX: number; maxX: number; minZ: number; maxZ: number; }
-export type UIAction = 'start' | 'explore' | 'inspect' | 'close' | 'menu' | 'journal' | 'decision' | 'back' | 'choose' | 'retry' | 'title' | 'sound' | 'quality' | 'camera' | 'stage' | 'next' | 'newcase';
+export type UIAction = 'start' | 'explore' | 'inspect' | 'close' | 'menu' | 'journal' | 'decision' | 'back' | 'choose' | 'retry' | 'title' | 'sound' | 'music' | 'quality' | 'camera' | 'stage' | 'next' | 'newcase';
 export interface StageDefinition { id: StageId; number: string; title: string; seconds: number; start: { x: number; z: number }; clues: Clue[]; endings: Record<Choice, Ending>; copy: Record<string, string>; choiceIds?: Choice[]; choices: Record<Choice, { label: string; description: string }>; cinematicSeconds: Record<Choice, number>; }
 
 /** All times are standard-time minutes; only displayedChoices uses plaza time. */

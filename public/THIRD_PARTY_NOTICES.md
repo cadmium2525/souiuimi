@@ -1,6 +1,6 @@
 # Third-party notices
 
-本アプリは以下のオープンソースを使用します。具体的な依存バージョンは `package-lock.json` を正本とします。ゲーム内の3D形状と効果音はコードから生成し、外部配布の3Dモデル・音源・Webフォントは使用していません。
+本アプリは以下のオープンソースを使用します。具体的な依存バージョンは `package-lock.json` を正本とします。ゲーム内の3D形状と短い効果音はコードから生成しています。BGMには、下記のクレジット付き録音を同梱しています。外部配布の3Dモデル・Webフォントは使用していません。
 
 上司のイラスト `public/characters/boss.png` は、このプロジェクトのために内蔵画像生成で制作した、透過背景の同梱静的画像です。制作プロンプトと生成モードは `docs/boss-illustration.md` に記録しています。ゲーム実行時に外部の画像生成APIを呼び出すことはありません。
 
@@ -15,6 +15,20 @@ PWA起動アイコン `public/icons/` も、このプロジェクト用に内蔵
 | @playwright/test / Playwright | 開発時のブラウザ操作・画面検証 | Apache-2.0 | https://github.com/microsoft/playwright |
 
 Vite、TypeScript、型定義、Playwrightとビルド用の推移的依存関係は開発用であり、公開サイトからnpmパッケージを取得することはありません。Playwrightはブラウザテスト専用で、ゲームの配信ファイルには含まれません。それぞれの完全なライセンスと追加表記はインストールされたパッケージの `LICENSE`、`LICENSE.md` または `LICENSE.txt` と、Three.js同梱物のライセンスを参照してください。Viteのビルド用同梱物にはBSD-2-Clause、CC0-1.0、ISC、MITのコードがあり、Viteの `LICENSE.md` に個別表記が収録されています。
+
+<a id="music"></a>
+## BGM — Bossa Antigua
+
+"Bossa Antigua" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+
+- 作者・配布元: [Kevin MacLeod / Incompetech](https://incompetech.com/)
+- 公式作品ページ: https://incompetech.com/music/royalty-free/index.html?Search=Search&isrc=USUAN1700069
+- 公式配布音源: https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bossa%20Antigua.mp3
+- 同梱ファイル: `audio/bossa-antigua.mp3`
+- 変更: 原音源の編集・再エンコードはしていません。ゲーム内で再生音量を下げ、曲全体を繰り返し再生します。
+- この録音の著作権は作者に帰属します。作者が本ゲームを推奨・支援していることを示すものではありません。
 
 ## Three.js — MIT License
 

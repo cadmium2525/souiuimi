@@ -10,6 +10,7 @@ import { GameUI } from '../ui/ui';
 import { Controls } from './controls';
 import { moveWithCollision, nearestClue } from './interactions';
 import { Sound } from './sound';
+import { Music } from './music';
 import type { Choice, UIAction, StageId } from './types';
 import { COPY } from '../data/stage01';
 
@@ -19,6 +20,7 @@ export class Game {
   readonly ui: GameUI;
   readonly controls: Controls;
   readonly sound = new Sound();
+  readonly music = new Music();
   private x = 0;
   private z = -0.25;
   private facing = 0;
@@ -37,6 +39,7 @@ export class Game {
       ? Number(requestedSeed) : null;
     this.state = new GameState({
       fixed: diagnosticsEnabled && parameters.get('fixture') === 'original',
+      singleCase: diagnosticsEnabled && (parameters.has('stage') || parameters.get('fixture') === 'original'),
       seedSource: seed === null ? undefined : () => {
         const result = seed!;
         seed = (result + 0x9e3779b9) >>> 0;
@@ -44,7 +47,12 @@ export class Game {
       },
     });
     const requestedStage = parameters.get('stage');
-    if (requestedStage && Object.hasOwn(STAGES, requestedStage)) this.state.selectStage(requestedStage as StageId);
+    if (diagnosticsEnabled && requestedStage && Object.hasOwn(STAGES, requestedStage)) this.state.selectStage(requestedStage as StageId);
+    try {
+      if (localStorage.getItem('souiu-imi-quality') === 'low') this.state.toggleQuality();
+      if (localStorage.getItem('souiu-imi-music') === 'off') this.state.toggleMusic();
+    } catch { /* Preferences are optional. */ }
+    this.music.setEnabled(this.state.music);
     this.x = this.state.stage.start.x;
     this.z = this.state.stage.start.z;
     this.ui = new GameUI(root, this.action, () => this.state.stage);
@@ -54,17 +62,21 @@ export class Game {
     this.resize();
     window.addEventListener('resize', this.resize);
     window.visualViewport?.addEventListener('resize', this.resize);
-    document.addEventListener('visibilitychange', () => { this.previousTime = 0; this.controls.clear(); });
+    document.addEventListener('visibilitychange', () => {
+      this.previousTime = 0; this.controls.clear();
+      this.music.setSuspended(document.hidden || this.contextLost);
+    });
+    window.addEventListener('pagehide', () => this.music.setSuspended(true));
+    window.addEventListener('pageshow', () => this.music.setSuspended(document.hidden || this.contextLost));
     canvas.addEventListener('webglcontextlost', e => {
       e.preventDefault(); this.contextLost = true; this.previousTime = 0; this.controls.clear();
+      this.music.setSuspended(true);
       this.ui.showError(COPY.contextLost);
     });
     canvas.addEventListener('webglcontextrestored', () => {
       this.contextLost = false; this.previousTime = 0; this.state.openMenu(); this.sync();
+      this.music.setSuspended(document.hidden);
     });
-    try {
-      if (localStorage.getItem('souiu-imi-quality') === 'low') this.state.toggleQuality();
-    } catch { /* Storage is optional. */ }
     this.resize();
     requestAnimationFrame(this.frame);
     if (diagnosticsEnabled) this.installDiagnostics();
@@ -139,15 +151,22 @@ export class Game {
       case 'retry': if (this.state.retry()) this.resetPlayer(); break;
       case 'title': if (this.state.title()) this.resetPlayer(); break;
       case 'sound': this.state.toggleSound(); this.sound.setEnabled(this.state.sound); break;
+      case 'music':
+        this.state.toggleMusic(); this.music.setEnabled(this.state.music);
+        try { localStorage.setItem('souiu-imi-music', this.state.music ? 'on' : 'off'); } catch { /* optional */ }
+        break;
       case 'quality':
         this.state.toggleQuality(); this.resize();
         try { localStorage.setItem('souiu-imi-quality', this.state.lowQuality ? 'low' : 'normal'); } catch { /* optional */ }
         break;
       case 'camera': this.controls.resetCamera(); break;
     }
+    // Playback is requested within the user's gesture; case transitions keep
+    // the same recording playing instead of starting another audio element.
+    this.music.unlock();
     const caseChanged = this.state.stageId !== stageBefore || this.state.snapshot().caseSeed !== seedBefore;
     if (caseChanged) this.replaceWorld();
-    if (this.state.phase !== before || caseChanged || ['sound', 'quality', 'stage'].includes(action)) {
+    if (this.state.phase !== before || caseChanged || ['sound', 'music', 'quality', 'stage'].includes(action)) {
       this.sound.play('tap'); this.sync();
     }
   };
@@ -167,7 +186,7 @@ export class Game {
     this.state.tick(realDt, true);
     if (this.state.phase !== phaseBefore) this.sync();
 
-    if (this.state.phase === 'TITLE' || this.state.phase === 'INTRO') {
+    if (this.state.phase === 'TITLE' || this.state.phase === 'INTRO' || this.state.phase === 'RESULTS') {
       this.world.showTitle(this.elapsed);
     } else if (this.state.phase === 'CINEMATIC' && this.state.choice) {
       this.cinematicTime += dt;
@@ -215,6 +234,7 @@ export class Game {
       cinematic: (seconds: number) => { this.cinematicTime = seconds; },
       colliders: () => this.world.colliders,
       visuals: () => this.world.diagnostics(),
+      music: () => this.music.diagnostics(),
       captureView: (position: [number, number, number], target: [number, number, number], fov = 42) => {
         if (position?.length === 3 && target?.length === 3 && [...position, ...target, fov].every(Number.isFinite)) {
           this.captureCamera = { position: [...position], target: [...target], fov: Math.max(20, Math.min(70, fov)) };

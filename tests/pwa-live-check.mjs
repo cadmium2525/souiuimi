@@ -10,6 +10,8 @@ const requested = new URL(process.env.PWA_LIVE_URL || 'https://cadmium2525.githu
 assert.equal(requested.protocol, 'https:', 'live PWA requires HTTPS');
 requested.search = ''; requested.hash = '';
 const base = requested.href;
+const audioFile = 'audio/bossa-antigua.mp3';
+const audioBytes = 9069455;
 const results = [], errors = [], responseErrors = [], observations = {};
 const pass = name => { results.push(name); console.log(`PASS ${name}`); };
 const profilePrefix = 'souiuimi-pwa-live-';
@@ -32,6 +34,39 @@ const pngSize = data => {
 };
 const screenshot = (page, name) => page.screenshot({ path: `artifacts/pwa-live-${name}.png`, animations: 'disabled' });
 const overlap = (a, b) => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+const captureAudio = () => {
+  const NativeAudio = window.Audio;
+  window.__testAudio = [];
+  window.Audio = function (...args) { const audio = new NativeAudio(...args); window.__testAudio.push(audio); return audio; };
+  window.Audio.prototype = NativeAudio.prototype;
+  Object.setPrototypeOf(window.Audio, NativeAudio);
+};
+const audioState = page => page.evaluate(() => window.__testAudio.map(audio => ({ src: audio.src, currentTime: audio.currentTime, paused: audio.paused, error: audio.error?.code ?? null })));
+const checkAudioRanges = async page => {
+  const checked = await page.evaluate(async ({ base, audioFile, audioBytes }) => {
+    const url = new URL(audioFile, base).href;
+    const cached = await caches.match(url);
+    if (!cached) throw new Error('complete recording is absent from the cache');
+    const original = new Uint8Array(await cached.arrayBuffer());
+    const ranges = [];
+    for (const [name, header, start, end] of [['first', 'bytes=0-127', 0, 127], ['suffix', 'bytes=-64', audioBytes - 64, audioBytes - 1], ['open', `bytes=${audioBytes - 64}-`, audioBytes - 64, audioBytes - 1]]) {
+      const response = await fetch(url, { headers: { Range: header } });
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      ranges.push({ name, status: response.status, range: response.headers.get('Content-Range'), length: response.headers.get('Content-Length'), acceptRanges: response.headers.get('Accept-Ranges'), bodyLength: bytes.length, matches: bytes.length === end - start + 1 && bytes.every((value, index) => value === original[start + index]) });
+    }
+    const unsatisfiable = await fetch(`${url}?pwa-range=unsatisfiable`, { headers: { Range: `bytes=${audioBytes}-` } });
+    return { cachedBytes: original.length, ranges, unsatisfiable: { status: unsatisfiable.status, range: unsatisfiable.headers.get('Content-Range'), bodyLength: (await unsatisfiable.arrayBuffer()).byteLength } };
+  }, { base, audioFile, audioBytes });
+  assert.equal(checked.cachedBytes, audioBytes);
+  for (const [index, { start, end }] of [{ start: 0, end: 127 }, { start: audioBytes - 64, end: audioBytes - 1 }, { start: audioBytes - 64, end: audioBytes - 1 }].entries()) {
+    const range = checked.ranges[index];
+    assert.equal(range.status, 206); assert.equal(range.range, `bytes ${start}-${end}/${audioBytes}`);
+    assert.equal(range.length, String(end - start + 1)); assert.equal(range.bodyLength, end - start + 1);
+    assert.equal(range.acceptRanges, 'bytes'); assert.equal(range.matches, true);
+  }
+  assert.deepEqual(checked.unsatisfiable, { status: 416, range: `bytes */${audioBytes}`, bodyLength: 0 });
+  return checked;
+};
 
 await fs.mkdir('artifacts', { recursive: true });
 try {
@@ -41,9 +76,13 @@ try {
     args: ['--no-first-run', '--no-default-browser-check', '--enable-unsafe-swiftshader', '--use-angle=swiftshader'],
   });
   context.setDefaultTimeout(30000);
+  await context.addInitScript(captureAudio);
   const page = context.pages()[0] || await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
-  page.on('response', response => { if (response.status() >= 400) responseErrors.push(`${response.status()} ${response.url()}`); });
+  page.on('response', response => {
+    const expectedRangeError = response.status() === 416 && new URL(response.url()).searchParams.get('pwa-range') === 'unsatisfiable';
+    if (response.status() >= 400 && !expectedRangeError) responseErrors.push(`${response.status()} ${response.url()}`);
+  });
   const response = await page.goto(base, { waitUntil: 'networkidle' });
   assert.equal(response.status(), 200); assert.equal(page.url(), base);
   await phase(page, 'title');
@@ -107,7 +146,7 @@ try {
       const bounds = await install.boundingBox(); entry.button = bounds;
       assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y + bounds.height <= height + 1);
       assert.ok(bounds.height >= 44, 'install action is a usable touch target');
-      for (const selector of ['.company-mark', '.game-title', '.stage-picker', '.start-button']) {
+      for (const selector of ['.company-mark', '.game-title', '.run-invitation', '.start-button', '.title-music']) {
         const element = page.locator(selector);
         if (await element.isVisible()) {
           const other = await element.boundingBox(), area = overlap(bounds, other);
@@ -118,33 +157,59 @@ try {
     }
     observations.layouts.push(entry);
   }
-  pass(observations.installOfferVisible ? 'real install offer stays clear of logo, title, case picker and start at 390/320/800px' : 'title captured at 390/320/800px; this Chrome session did not expose an install offer');
+  pass(observations.installOfferVisible ? 'real install offer stays clear of logo, title, five-case invitation, BGM and start at 390/320/800px' : 'title captured at 390/320/800px; this Chrome session did not expose an install offer');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await context.setOffline(true);
   await page.reload(); await phase(page, 'title');
   assert.equal(await page.evaluate(() => navigator.onLine), false);
-  assert.equal(await page.locator('.stage-pick').count(), 5);
-  await page.locator('[data-action="stage"][data-detail="stage05"]').click();
-  await action(page, 'start'); await phase(page, 'intro');
-  await page.waitForFunction(() => [...document.querySelectorAll('.boss-portrait')].length > 0 && [...document.querySelectorAll('.boss-portrait')].every(img => img.complete && img.naturalWidth > 0));
-  await screenshot(page, 'offline-boss');
-  await action(page, 'explore'); await phase(page, 'explore');
-  assert.equal(await page.locator('#ui').getAttribute('data-stage'), 'stage05');
-  assert.ok(await page.locator('#world').evaluate(canvas => canvas.width > 0 && canvas.height > 0));
-  await action(page, 'decision'); await phase(page, 'decision');
-  assert.equal(await page.locator('.choice-button').count(), 3);
-  await screenshot(page, 'offline-choices');
-  await page.locator('[data-action="choose"][data-detail="C"]').click();
-  await phase(page, 'cinematic');
-  await page.waitForTimeout(4500); await screenshot(page, 'offline-bundle');
-  await page.locator('#ui[data-phase="ending"]').waitFor({ timeout: 25000 });
-  assert.ok((await page.locator('.ending-explanation').innerText()).length > 0);
-  await screenshot(page, 'offline-ending');
+  assert.equal(await page.locator('.stage-pick').count(), 0);
+  assert.equal(await page.locator('[data-action="start"]').count(), 1);
+  observations.audioRanges = await checkAudioRanges(page);
+  await action(page, 'start');
+  const played = [];
+  for (let index = 0; index < 5; index++) {
+    await phase(page, 'intro');
+    await page.waitForFunction(() => [...document.querySelectorAll('.boss-portrait')].length > 0 && [...document.querySelectorAll('.boss-portrait')].every(img => img.complete && img.naturalWidth > 0));
+    if (index === 0) await screenshot(page, 'offline-boss');
+    await action(page, 'explore'); await phase(page, 'explore');
+    const id = await page.locator('#ui').getAttribute('data-stage');
+    assert.ok(!played.includes(id), 'a completed case never repeats within a run');
+    played.push(id);
+    assert.equal(await page.evaluate(() => typeof window.__game), 'undefined');
+    assert.ok(await page.locator('#world').evaluate(canvas => canvas.width > 0 && canvas.height > 0));
+    assert.match(await page.locator('[data-run-progress]').innerText(), new RegExp(`${index + 1}/5`));
+    if (index === 0) {
+      await page.waitForFunction(() => window.__testAudio.some(audio => !audio.paused && audio.currentTime > 0.2 && !audio.error));
+      observations.offlineAudioStart = await audioState(page);
+    }
+    await action(page, 'decision'); await phase(page, 'decision');
+    assert.equal(await page.locator('.choice-button').count(), id === 'stage04' ? 2 : 3);
+    if (id === 'stage05') await screenshot(page, 'offline-choices');
+    const choice = id === 'stage04' ? 'A' : 'C';
+    await page.locator(`[data-action="choose"][data-detail="${choice}"]`).click();
+    await phase(page, 'cinematic');
+    if (id === 'stage05') { await page.waitForTimeout(4500); await screenshot(page, 'offline-bundle'); }
+    await page.locator('#ui[data-phase="ending"]').waitFor({ timeout: 30000 });
+    assert.ok((await page.locator('.ending-explanation').innerText()).length > 0);
+    assert.equal(await page.locator('[data-action="retry"]').count(), 0);
+    if (id === 'stage05') await screenshot(page, 'offline-ending');
+    await action(page, 'newcase');
+    await phase(page, index < 4 ? 'intro' : 'results');
+    console.log(`Completed offline case ${index + 1}/5: ${id}`);
+  }
+  observations.offlineOrder = played;
+  assert.deepEqual([...played].sort(), ['stage01', 'stage02', 'stage03', 'stage04', 'stage05']);
+  assert.equal(await page.locator('.result-row').count(), 5);
+  observations.offlineAudioEnd = await audioState(page);
+  assert.equal(observations.offlineAudioEnd.length, 1);
+  assert.ok(observations.offlineAudioEnd[0].currentTime > observations.offlineAudioStart[0].currentTime + 1);
+  assert.equal(observations.offlineAudioEnd[0].paused, false); assert.equal(observations.offlineAudioEnd[0].error, null);
+  await screenshot(page, 'offline-five-case-results');
   await context.setOffline(false); await page.waitForFunction(() => navigator.onLine);
   assert.equal((await page.request.get(manifestUrl)).status(), 200);
   assert.deepEqual(errors, []); assert.deepEqual(responseErrors, []);
-  pass('published installation reopens offline, plays Case 5 with boss and three choices through its ending, and reconnects');
+  pass('published installation completes five unique cases offline through results, plays cached acoustic BGM with working byte ranges, and reconnects');
 } finally {
   observations.browser = context ? await context.browser()?.version() : undefined;
   await fs.writeFile('artifacts/pwa-live-results.json', JSON.stringify({ base, results, errors, responseErrors, observations }, null, 2));

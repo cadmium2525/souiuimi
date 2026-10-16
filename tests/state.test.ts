@@ -156,7 +156,7 @@ test('retry clears the entire session and preserves user sound/quality settings'
   assert.equal(state.retry(), false);
   assert.deepEqual(state.snapshot(), {
     stageId: 'stage01', caseSeed: null, phase: 'EXPLORE', remaining: 120, found: [], nearest: null,
-    inspected: null, choice: null, sound: true, lowQuality: true, timedOut: false,
+    inspected: null, choice: null, sound: true, music: true, lowQuality: true, timedOut: false, mode: 'single', run: null,
   });
 });
 
@@ -243,7 +243,7 @@ test('next work starts stage two introduction and clears all stage one evidence'
   assert.equal(state.next(), true);
   assert.deepEqual(state.snapshot(), {
     stageId: 'stage02', caseSeed: null, phase: 'INTRO', remaining: 120, found: [], nearest: null,
-    inspected: null, choice: null, sound: true, lowQuality: true, timedOut: false,
+    inspected: null, choice: null, sound: true, music: true, lowQuality: true, timedOut: false, mode: 'single', run: null,
   });
   assert.equal(state.next(), false);
   assert.equal(state.inspect('C07'), false);
@@ -326,9 +326,9 @@ test('the two-choice amount case rejects the hidden third answer in normal and f
   }
 });
 
-test('normal start generates once and shares the frozen case with the UI', () => {
+test('single-case start generates once and shares the frozen case with the UI', () => {
   let calls = 0;
-  const state = new GameState({ seedSource: () => { calls++; return 41; } });
+  const state = new GameState({ singleCase: true, seedSource: () => { calls++; return 41; } });
   assert.equal(state.case, null);
   assert.equal(state.caseSeed, null);
   assert.equal(state.start(), true);
@@ -344,7 +344,7 @@ test('normal start generates once and shares the frozen case with the UI', () =>
 
 test('retry keeps the identical case object, seed and all evidence facts while resetting play', () => {
   let calls = 0;
-  const state = new GameState({ seedSource: () => { calls++; return 73; } });
+  const state = new GameState({ singleCase: true, seedSource: () => { calls++; return 73; } });
   state.start(); state.explore();
   state.toggleSound(); state.toggleQuality();
   const instance = state.case!;
@@ -367,7 +367,7 @@ test('retry keeps the identical case object, seed and all evidence facts while r
 
 test('new case is guarded, generates a different seed and can explicitly choose a stage', () => {
   let calls = 0;
-  const state = new GameState({ seedSource: () => { calls++; return 0; } });
+  const state = new GameState({ singleCase: true, seedSource: () => { calls++; return 0; } });
   assert.equal(state.newCase('unknown' as StageId), false);
   assert.equal(calls, 0);
   assert.equal(state.newCase('stage02'), true);
@@ -391,7 +391,7 @@ test('new case is guarded, generates a different seed and can explicitly choose 
 
 test('title and stage selection discard a case; replay and next create fresh cases', () => {
   let seed = 100;
-  const state = new GameState({ seedSource: () => seed++ });
+  const state = new GameState({ singleCase: true, seedSource: () => seed++ });
   state.start(); state.explore();
   const first = state.case!;
   state.openMenu();
@@ -415,7 +415,7 @@ test('title and stage selection discard a case; replay and next create fresh cas
 });
 
 test('new case selects every registered stage without enforcing an answer cycle or repeating seeds', () => {
-  const state = new GameState({ seedSource: () => 0 });
+  const state = new GameState({ singleCase: true, seedSource: () => 0 });
   const seeds = new Set<number>();
   const stages = new Set<StageId>();
   const answers: Choice[] = [];
@@ -445,5 +445,213 @@ test('fixed fixture mode preserves the authored stage with no generated case or 
   assert.equal(state.stage, getStage('stage02'));
   assert.equal(state.case, null);
   assert.equal(calls, 0);
+});
+
+test('normal play starts a five-case run with independent music and effect settings', () => {
+  const state = new GameState({ seedSource: () => 10 });
+  assert.equal(state.snapshot().mode, 'run');
+  assert.equal(state.snapshot().run, null);
+  assert.equal(state.music, true);
+  assert.equal(state.sound, false);
+  state.toggleMusic();
+  assert.equal(state.music, false);
+  assert.equal(state.sound, false);
+  state.toggleSound();
+  state.start();
+  assert.equal(state.snapshot().run?.current, 1);
+  assert.equal(state.snapshot().run?.total, 5);
+  assert.deepEqual(state.snapshot().run?.completed, []);
+  assert.equal(state.sound, true);
+  assert.equal(state.music, false);
+});
+
+test('five-case runs contain every stage once and randomize every position across seeds', () => {
+  const orders = new Set<string>();
+  const positions = Array.from({ length: STAGE_LIST.length }, () => new Set<StageId>());
+  for (let runSeed = 0; runSeed < 512; runSeed++) {
+    let nextSeed = runSeed * 4096;
+    let calls = 0;
+    const state = new GameState({ seedSource: () => { calls++; return nextSeed++; } });
+    assert.equal(state.start(), true);
+    const order: StageId[] = [];
+    for (let index = 0; index < STAGE_LIST.length; index++) {
+      order.push(state.stageId);
+      positions[index].add(state.stageId);
+      assert.equal(state.snapshot().run?.current, index + 1);
+      assert.equal(state.snapshot().run?.completed.length, index);
+      finishGenerated(state);
+      assert.equal(state.snapshot().run?.completed.length, index + 1);
+      assert.equal(state.newCase(), true);
+      assert.equal(state.phase, index < STAGE_LIST.length - 1 ? 'INTRO' : 'RESULTS');
+    }
+    assert.deepEqual([...new Set(order)].sort(), STAGE_LIST.map(stage => stage.id).sort());
+    assert.equal(state.snapshot().run?.completed.filter(result => result.correct).length, 5);
+    assert.equal(calls, 6, 'one seed for order and one new seed per generated case');
+    orders.add(order.join(','));
+  }
+  assert.ok(orders.size >= 110, `expected broad permutation coverage, got ${orders.size}`);
+  for (const position of positions) assert.equal(position.size, STAGE_LIST.length);
+});
+
+test('a run records first-attempt correctness, exact choice labels, clues and active time once', () => {
+  let seed = 79;
+  const state = new GameState({ seedSource: () => seed++ });
+  state.start();
+  const expected = [];
+  for (let index = 0; index < 5; index++) {
+    state.explore();
+    for (const clue of state.stage.clues.slice(0, index + 1)) { state.inspect(clue.id); state.close(); }
+    state.tick(index === 4 ? 120 : index * 3);
+    state.decide();
+    const correctChoice = state.case!.correctChoice;
+    const wrongChoice = (state.stage.choiceIds ?? ['A', 'B', 'C']).find(choice => choice !== correctChoice)!;
+    const choice = index % 2 === 0 ? correctChoice : wrongChoice;
+    expected.push({
+      stageId: state.stageId, caseSeed: state.caseSeed, choice,
+      choiceLabel: state.stage.choices[choice].label, correctChoice,
+      correct: choice === correctChoice, found: index + 1,
+      elapsed: index === 4 ? 120 : index * 3, timedOut: index === 4,
+    });
+    state.choose(choice);
+    assert.equal(state.snapshot().run?.completed.length, index);
+    assert.equal(state.finishEnding(), true);
+    assert.equal(state.finishEnding(), false);
+    assert.equal(state.retry(), false, 'a revealed answer cannot replace the first attempt');
+    assert.equal(state.next(), false);
+    assert.equal(state.newCase('stage01'), false);
+    assert.deepEqual(state.snapshot().run?.completed, expected);
+    assert.equal(state.newCase(), true);
+  }
+  assert.equal(state.phase, 'RESULTS');
+  assert.equal(state.snapshot().run?.completed.filter(result => result.correct).length, 3);
+  assert.equal(state.snapshot().run?.current, 5);
+});
+
+test('run navigation rejects early advancement, skipping, selection and repeated completion', () => {
+  const state = new GameState({ seedSource: () => 11 });
+  assert.equal(state.newCase(), false);
+  assert.equal(state.newCase('stage02'), false);
+  state.start();
+  const first = state.case;
+  const rejectAdvance = (): void => {
+    assert.equal(state.start(), false);
+    assert.equal(state.newCase(), false);
+    assert.equal(state.newCase('stage05'), false);
+    assert.equal(state.next(), false);
+    assert.equal(state.retry(), false);
+    assert.equal(state.selectStage('stage03'), false);
+    assert.equal(state.case, first);
+    assert.deepEqual(state.snapshot().run?.completed, []);
+  };
+  rejectAdvance();
+  assert.equal(state.finishEnding(), false);
+  state.explore(); rejectAdvance();
+  state.inspect('C01'); rejectAdvance(); state.close();
+  state.openMenu(); rejectAdvance(); state.close();
+  state.openJournal(); rejectAdvance(); state.close();
+  state.decide(); rejectAdvance();
+  assert.equal(state.finishEnding(), false);
+  state.choose(state.case!.correctChoice); rejectAdvance();
+  state.finishEnding();
+  assert.equal(state.snapshot().run?.completed.length, 1);
+  assert.equal(state.newCase(), true);
+  assert.equal(state.newCase(), false);
+  assert.equal(state.snapshot().run?.completed.length, 1);
+  assert.equal(state.snapshot().run?.current, 2);
+});
+
+test('run snapshots copy results and never expose the remaining stage order', () => {
+  const state = new GameState({ seedSource: () => 23 });
+  state.start(); finishGenerated(state);
+  const view = state.snapshot();
+  const original = structuredClone(view.run!);
+  view.run!.completed[0].correct = !view.run!.completed[0].correct;
+  view.run!.completed[0].choiceLabel = 'rewritten';
+  view.run!.completed.length = 0;
+  view.run!.current = 99;
+  view.run!.total = 1;
+  view.mode = 'single';
+  assert.deepEqual(state.snapshot().run, original);
+  assert.equal(state.snapshot().mode, 'run');
+  assert.deepEqual(Object.keys(state.snapshot().run!).sort(), ['completed', 'current', 'total']);
+  assert.equal(Object.hasOwn(state.snapshot(), 'runOrder'), false);
+});
+
+test('returning to title abandons a run and always starts five fresh cases', () => {
+  for (const origin of ['MENU', 'ENDING', 'RESULTS'] as const) {
+    let seed = 100;
+    const state = new GameState({ seedSource: () => seed++ });
+    state.start();
+    const oldSeed = state.caseSeed;
+    if (origin === 'MENU') { state.explore(); state.openMenu(); }
+    else {
+      finishGenerated(state);
+      if (origin === 'RESULTS') {
+        for (let index = 1; index < 5; index++) { state.newCase(); finishGenerated(state); }
+        state.newCase();
+      }
+    }
+    assert.equal(state.phase, origin);
+    assert.equal(state.title(), true);
+    assert.equal(state.case, null);
+    assert.equal(state.snapshot().run, null);
+    assert.equal(state.snapshot().mode, 'run');
+    assert.equal(state.start(), true);
+    assert.notEqual(state.caseSeed, oldSeed);
+    assert.deepEqual(state.snapshot().run, { completed: [], total: 5, current: 1 });
+  }
+});
+
+test('results can start a fresh complete run while retaining audio and quality preferences', () => {
+  let seed = 500;
+  const state = new GameState({ seedSource: () => seed++ });
+  state.toggleMusic(); state.toggleSound(); state.toggleQuality();
+  state.start();
+  const oldSeeds = new Set<number | null>();
+  for (let index = 0; index < 5; index++) {
+    oldSeeds.add(state.caseSeed);
+    finishGenerated(state); state.newCase();
+  }
+  assert.equal(state.phase, 'RESULTS');
+  assert.equal(state.retry(), false);
+  assert.equal(state.newCase(), false);
+  assert.equal(state.finishEnding(), false);
+  assert.equal(state.start(), true);
+  assert.equal(state.phase, 'INTRO');
+  assert.equal(oldSeeds.has(state.caseSeed), false);
+  assert.deepEqual(state.snapshot().run, { completed: [], total: 5, current: 1 });
+  assert.equal(state.music, false);
+  assert.equal(state.sound, true);
+  assert.equal(state.lowQuality, true);
+});
+
+test('diagnostic selection is single-case play and title restores the normal run mode', () => {
+  const state = new GameState({ seedSource: () => 42 });
+  assert.equal(state.selectStage('stage03'), true);
+  assert.equal(state.snapshot().mode, 'single');
+  state.start(); finishGenerated(state);
+  assert.equal(state.snapshot().run, null);
+  assert.equal(state.retry(), true);
+  state.openMenu(); state.title();
+  assert.equal(state.snapshot().mode, 'run');
+  state.start();
+  assert.equal(state.snapshot().run?.total, 5);
+});
+
+test('stage order uses a separate random stream from generated answers', () => {
+  const makeRun = (caseSeedOffset: number): GameState => {
+    let calls = 0;
+    return new GameState({ seedSource: () => calls++ === 0 ? 13579 : caseSeedOffset + calls });
+  };
+  const first = makeRun(1000), second = makeRun(9000);
+  first.start(); second.start();
+  for (let index = 0; index < 5; index++) {
+    assert.equal(first.stageId, second.stageId);
+    assert.notEqual(first.caseSeed, second.caseSeed);
+    finishGenerated(first); finishGenerated(second);
+    first.newCase(); second.newCase();
+  }
+  assert.equal(first.phase, 'RESULTS');
+  assert.equal(second.phase, 'RESULTS');
 });
 

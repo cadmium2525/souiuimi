@@ -15,6 +15,7 @@
     "test:stages": "node tests/stages-check.mjs",
     "test:random": "node tests/random-cases-check.mjs",
     "test:money": "node tests/money-check.mjs",
+    "test:run": "node tests/run-check.mjs",
     "test:amount": "node tests/amount-check.mjs",
     "test:document": "node tests/document-check.mjs",
     "test:document-ui": "node tests/document-ui-check.mjs",

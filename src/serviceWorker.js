@@ -73,15 +73,37 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'CLIENT_READY') event.waitUntil(cleanUnusedVersions());
 });
 
+async function mediaRange(request, response) {
+  const range = request.headers.get('Range');
+  if (!range || response.status !== 200 || !/\.(mp3|ogg|wav|m4a)$/i.test(new URL(request.url).pathname)) return response;
+  // Browsers may request only part of a recording when decoding or looping.
+  // The precache contains the complete file, including while offline.
+  const match = /^bytes=(\d*)-(\d*)$/i.exec(range.trim());
+  if (!match || (!match[1] && !match[2])) return response;
+  const bytes = await response.arrayBuffer();
+  const size = bytes.byteLength;
+  const first = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
+  const last = match[1] && match[2] ? Math.min(size - 1, Number(match[2])) : size - 1;
+  if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 0 || first >= size || last < first || (!match[1] && Number(match[2]) === 0)) {
+    return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+  }
+  const headers = new Headers(response.headers);
+  headers.delete('Content-Encoding');
+  headers.set('Accept-Ranges', 'bytes');
+  headers.set('Content-Range', `bytes ${first}-${last}/${size}`);
+  headers.set('Content-Length', String(last - first + 1));
+  return new Response(bytes.slice(first, last + 1), { status: 206, statusText: 'Partial Content', headers });
+}
+
 async function cachedAsset(request) {
   const current = await caches.open(CACHE);
   const hit = await current.match(request, { ignoreSearch: true });
-  if (hit) return hit;
+  if (hit) return mediaRange(request, hit);
   // A previous tab may still request one of its own hashed files after update.
   for (const name of (await caches.keys()).filter((name) => name.startsWith(PREFIX))) {
     if (name === CACHE) continue;
     const older = await (await caches.open(name)).match(request, { ignoreSearch: true });
-    if (older) return older;
+    if (older) return mediaRange(request, older);
   }
   return fetch(request);
 }
@@ -91,7 +113,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin || !url.href.startsWith(SCOPE)) return;
   if (request.mode === 'navigate') {
-    // Serve one coherent installed build; query parameters still select cases.
+    // Serve one coherent installed build, including offline game runs.
     event.respondWith((async () => (await (await caches.open(CACHE)).match(SHELL)) || fetch(request))());
     return;
   }

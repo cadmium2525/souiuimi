@@ -85,7 +85,7 @@ export class GameUI {
   render(snapshot: Snapshot): void {
     this.stage = this.getCurrentStage?.() ?? getStage(snapshot.stageId);
     if (this.error) { this.error.remove(); this.error = null; }
-    const signature = [snapshot.stageId, snapshot.caseSeed ?? 'fixture', snapshot.phase, ...(snapshot.phase === 'EXPLORE' ? [] : [snapshot.inspected, snapshot.choice, snapshot.sound, snapshot.lowQuality, snapshot.found.join(','), snapshot.timedOut])].join('|');
+    const signature = [snapshot.mode, snapshot.stageId, snapshot.caseSeed ?? 'fixture', snapshot.phase, snapshot.music, snapshot.run?.current, snapshot.run?.completed.length, ...(snapshot.phase === 'EXPLORE' ? [] : [snapshot.inspected, snapshot.choice, snapshot.sound, snapshot.lowQuality, snapshot.found.join(','), snapshot.timedOut])].join('|');
     if (this.signature === signature) { this.updateHUD(snapshot); return; }
     const changedPhase = this.phase !== snapshot.phase;
     this.touchButtons.clear();
@@ -96,14 +96,15 @@ export class GameUI {
     this.root.dataset.stage = snapshot.stageId;
     switch (snapshot.phase) {
       case 'TITLE': this.root.innerHTML = this.title(snapshot); break;
-      case 'INTRO': this.root.innerHTML = this.intro(); break;
-      case 'EXPLORE': this.root.innerHTML = this.explore(); break;
+      case 'INTRO': this.root.innerHTML = this.intro(snapshot); break;
+      case 'EXPLORE': this.root.innerHTML = this.explore(snapshot); break;
       case 'INSPECT': this.root.innerHTML = this.inspect(snapshot); break;
       case 'MENU': this.root.innerHTML = this.menu(snapshot); break;
       case 'JOURNAL': this.root.innerHTML = this.journal(snapshot); break;
       case 'DECISION': this.root.innerHTML = this.decision(snapshot); break;
       case 'CINEMATIC': this.root.innerHTML = this.cinematic(snapshot); break;
       case 'ENDING': this.root.innerHTML = this.ending(snapshot); break;
+      case 'RESULTS': this.root.innerHTML = this.results(snapshot); break;
     }
     this.updateHUD(snapshot);
     if (snapshot.phase === 'TITLE') {
@@ -132,6 +133,8 @@ export class GameUI {
     if (timer) { timer.textContent = clock(snapshot.remaining); timer.parentElement?.classList.toggle('timer-urgent', snapshot.remaining <= 60); }
     const count = this.root.querySelector<HTMLElement>('#clue-count');
     if (count) count.textContent = `${snapshot.found.length}/${stage.clues.length}`;
+    const progress = this.root.querySelector<HTMLElement>('[data-run-progress]');
+    if (progress && snapshot.run) progress.textContent = `依頼 ${snapshot.run.current}/${snapshot.run.total}`;
     const inspect = this.root.querySelector<HTMLButtonElement>('#inspect-button');
     if (inspect) { inspect.hidden = !snapshot.nearest; inspect.disabled = !snapshot.nearest; }
     const context = this.root.querySelector<HTMLElement>('#context-name');
@@ -159,18 +162,21 @@ export class GameUI {
 
   private title(snapshot: Snapshot): string {
     const stage = this.stage;
-    return `<main class="title-screen${STAGE_LIST.length > 3 ? ' has-many-cases' : ''}${STAGE_LIST.length > 4 ? ' has-case-overflow' : ''}">
+    const single = snapshot.mode === 'single';
+    const picker = `<nav class="stage-picker" aria-label="遊ぶ業務を選ぶ">${STAGE_LIST.map((item) => button('stage', `<span>CASE ${item.number}</span><strong>${escape(item.title)}</strong>`, `stage-pick ${snapshot.stageId === item.id ? 'is-selected' : ''}`, `data-detail="${item.id}" aria-pressed="${snapshot.stageId === item.id}"`)).join('')}</nav>${STAGE_LIST.length > 4 ? '<p class="stage-picker-hint">スクロールで、ほかの業務へ ↕</p>' : ''}<div class="stage-preview"><span class="stage-number">${stage.number}</span><div><span class="eyebrow">本日の業務</span><h2>「${escape(stage.title)}」</h2></div><span class="duration">約${Math.ceil(stage.seconds / 60)}分</span></div>`;
+    return `<main class="title-screen${single ? `${STAGE_LIST.length > 3 ? ' has-many-cases' : ''}${STAGE_LIST.length > 4 ? ' has-case-overflow' : ''}` : ' title-run'}">
       <div class="title-paper"></div>
       <header class="title-header"><div class="company-mark">${icons.office}<span>株式会社<br><strong>よしなに</strong></span></div><span class="edition-label">曖昧指示、解読係。<br>OFFICE COMEDY / ${STAGE_LIST.length} CASES</span></header>
-      <section class="title-copy"><p class="eyebrow"><span class="tiny-dot"></span> ${Math.ceil(stage.seconds / 60)}分で遊べる、3D探索コメディ</p>
+      <section class="title-copy"><p class="eyebrow"><span class="tiny-dot"></span> ${single ? `${Math.ceil(stage.seconds / 60)}分で遊べる、3D探索コメディ` : '日常のひと言を解く、3D探索コメディ'}</p>
         <h1 class="game-title" tabindex="-1" data-focus><span>そういう</span><span>意味じゃない<span class="title-exclamation">！</span></span></h1>
         <div class="title-sticker"><span>上司のひと言、</span><strong>どういう意味？</strong><span class="sticker-star">✳</span></div>
-        <p class="title-description">${this.copy('titleTagline', 'その解釈、絶対おかしい。\n……え、正解なの！？')}</p>
+        <p class="title-description">${single ? this.copy('titleTagline', 'その解釈、絶対おかしい。\n……え、正解なの！？') : 'ことばは、同じ。意図は、いろいろ。<br>手がかりを集めて、上司の真意を見抜こう。'}</p>
       </section>
-      <section class="title-start"><nav class="stage-picker" aria-label="遊ぶ業務を選ぶ">${STAGE_LIST.map((item) => button('stage', `<span>CASE ${item.number}</span><strong>${escape(item.title)}</strong>`, `stage-pick ${snapshot.stageId === item.id ? 'is-selected' : ''}`, `data-detail="${item.id}" aria-pressed="${snapshot.stageId === item.id}"`)).join('')}</nav>${STAGE_LIST.length > 4 ? '<p class="stage-picker-hint">スクロールで、ほかの業務へ ↕</p>' : ''}<div class="stage-preview"><span class="stage-number">${stage.number}</span><div><span class="eyebrow">本日の業務</span><h2>「${escape(stage.title)}」</h2></div><span class="duration">約${Math.ceil(stage.seconds / 60)}分</span></div>
-        ${button('start', '<span>出勤する</span>' + icons.arrow, 'button button-primary start-button')}
-        <p class="title-footnote">同じ舞台でも、依頼は毎回変わる<span>音声 ${snapshot.sound ? 'ON' : 'OFF'} でスタート</span></p>
-        <div class="title-world-label"><span>${this.copy('worldLabel', 'いつものオフィス。\nいつもの、無茶ぶり。')}</span><span class="hand-arrow">↘</span></div>
+      <section class="title-start">${single ? picker : `<div class="run-invitation"><span class="run-invitation-number">${STAGE_LIST.length}</span><div><p class="eyebrow">本日の業務</p><h2>${STAGE_LIST.length}つの依頼を、<br>ランダムな順番で。</h2></div><span class="run-invitation-note">各ケース<br>探索2分</span></div>`}
+        ${button('start', `<span>${single ? '出勤する' : 'ゲームスタート'}</span>` + icons.arrow, 'button button-primary start-button')}
+        ${single ? `<p class="title-footnote">同じ舞台でも、依頼は毎回変わる<span>効果音 ${snapshot.sound ? 'ON' : 'OFF'} でスタート</span></p>` : '<p class="title-footnote run-footnote">5つ終えたら、今日のすれ違いを振り返ろう。</p>'}
+        <div class="title-music"><span>BGM</span>${this.musicToggle(snapshot)}<a class="music-credit" href="${import.meta.env.BASE_URL}THIRD_PARTY_NOTICES.md#music" target="_blank" rel="noopener">BGMクレジット ↗</a></div>
+        <div class="title-world-label"><span>${single ? this.copy('worldLabel', 'いつものオフィス。\nいつもの、無茶ぶり。') : '今日も、ひと言に\nふりまわされる。'}</span><span class="hand-arrow">↘</span></div>
       </section>
       <div class="world-tag"><span class="tiny-dot"></span> ${this.copy('worldLocation', '株式会社よしなに')} <span class="world-tag-time">${this.copy('worldClock', '14:55')}</span></div>
       <div class="title-index">THINK. EXPLORE. MISUNDERSTAND.</div>
@@ -178,8 +184,8 @@ export class GameUI {
     </main>`;
   }
 
-  private intro(): string {
-    return this.modal(`<div class="modal-kicker"><span>本日の業務 / ${this.stage.number}</span><span class="small-clock">${clock(this.stage.seconds)}</span></div>
+  private intro(snapshot: Snapshot): string {
+    return this.modal(`<div class="modal-kicker"><span>${this.runProgress(snapshot)}本日の業務 / ${this.stage.number}</span><span class="small-clock">${clock(this.stage.seconds)}</span></div>
       <h1 class="modal-title" tabindex="-1" data-focus>指示が、<br>届きました。</h1>
       <div class="intro-conversation"><div class="boss-portrait-frame"><img class="boss-portrait" src="${bossImage}" alt="上司のイラスト"/><span>株式会社よしなに / 部長</span></div><div class="boss-dialogue"><div class="message-head"><div><strong>上司</strong><span>たった今</span></div><span class="message-status">指示</span></div><blockquote class="boss-message">${this.copy('introBoss', '')}</blockquote></div></div>
       <div class="intro-rule"><span class="rule-number">?</span><p>${this.copy('introInstruction', `制限時間${clock(this.stage.seconds)}。上司の真意を推理しよう。`)}</p></div>
@@ -187,9 +193,9 @@ export class GameUI {
       button('explore', `<span>${this.copy('exploreButton', '探索をはじめる')}</span>` + icons.arrow, 'button button-primary'), 'intro-panel');
   }
 
-  private explore(): string {
+  private explore(snapshot: Snapshot): string {
     return `<div class="explore-ui"><div id="look-area" aria-label="ドラッグして視点を動かす"></div>
-      <header class="hud"><div class="hud-status"><div class="timer-chip"><span class="timer-label">残り時間</span><strong id="timer-value">${clock(this.stage.seconds)}</strong></div>
+      <header class="hud"><div class="hud-status"><div class="timer-chip"><span class="timer-label">${snapshot.run ? `<span class="hud-run-progress" data-run-progress>依頼 ${snapshot.run.current}/${snapshot.run.total}</span>` : ''}残り時間</span><strong id="timer-value">${clock(this.stage.seconds)}</strong></div>
       ${button('journal', icons.book + `<span class="clue-label">手がかり</span><strong id="clue-count">0/${this.stage.clues.length}</strong>`, 'hud-notebook', 'aria-label="調査ノートを開く"')}</div>
       ${button('menu', icons.menu, 'icon-button hud-menu', 'aria-label="メニューを開く"')}</header>
       <div class="explore-objective">「${escape(this.stage.title)}」<span>上司の真意を推理しよう</span></div>
@@ -210,9 +216,11 @@ export class GameUI {
 
   private menu(snapshot: Snapshot): string {
     return this.modal(`<div class="modal-kicker"><span>BREAK TIME</span>${pause}</div><h1 class="modal-title" tabindex="-1" data-focus>ひと休み。</h1>
-      <div class="settings-list"><div class="setting-row"><div><strong>サウンド</strong><p>音がなくても、すべて遊べます</p></div>${button('sound', `<span>${snapshot.sound ? 'ON' : 'OFF'}</span><i></i>`, `toggle-button ${snapshot.sound ? 'is-on' : ''}`, `aria-label="音を${snapshot.sound ? 'オフ' : 'オン'}にする" aria-pressed="${snapshot.sound}"`)}</div>
+      <div class="settings-list"><div class="setting-row"><div><strong>BGM</strong><p>音楽のオン・オフ</p></div>${this.musicToggle(snapshot)}</div>
+      <div class="setting-row"><div><strong>効果音</strong><p>音がなくても、すべて遊べます</p></div>${button('sound', `<span>${snapshot.sound ? 'ON' : 'OFF'}</span><i></i>`, `toggle-button ${snapshot.sound ? 'is-on' : ''}`, `aria-label="効果音を${snapshot.sound ? 'オフ' : 'オン'}にする" aria-pressed="${snapshot.sound}"`)}</div>
       <div class="setting-row"><div><strong>描画品質</strong><p>動きが重いときは「軽量」へ</p></div>${button('quality', snapshot.lowQuality ? '軽量' : '標準', 'quality-button', `aria-label="描画品質を${snapshot.lowQuality ? '標準' : '軽量'}に切り替える"`)}</div></div>
       ${button('camera', '<span>視点をリセット</span>↺', 'button button-subtle camera-button')}
+      <a class="music-credit menu-music-credit" href="${import.meta.env.BASE_URL}THIRD_PARTY_NOTICES.md#music" target="_blank" rel="noopener">BGMクレジット ↗</a>
       <div class="control-guide"><h2>操作のメモ</h2><div><span>スマートフォン</span><p>左のスティックで移動<br>画面の右側をスワイプで視点</p></div><div><span>PC</span><p>WASD / 矢印キーで移動<br>マウスをドラッグで視点、Eで調べる</p></div></div>`,
       button('close', '<span>探索に戻る</span>' + icons.arrow, 'button button-primary') + button('title', 'タイトルへ', 'button button-text'), 'menu-panel');
   }
@@ -250,13 +258,34 @@ export class GameUI {
       ? ['C03', 'C05', 'C06', 'C04', 'C07', 'C02', 'C01'].map((id) => missed.find((clue) => clue.id === id)).filter((clue): clue is Clue => Boolean(clue)).slice(0, 2)
       : reviewIds.map((id) => clues.find((clue) => clue.id === id)).filter((clue): clue is Clue => Boolean(clue));
     const evidenceTitles = (items: Clue[], empty: string) => items.length ? `<ul>${items.map((clue) => `<li><span>${number(clue)}</span>${escape(clue.title)}</li>`).join('')}</ul>` : `<p class="empty-note">${empty}</p>`;
-    return this.modal(`<div class="modal-kicker"><span>CASE ${this.stage.number} / ENDING ${choice}</span><span class="ending-stamp ${correct ? 'ending-stamp-c' : ''}">${correct ? this.copy('successLabel', '大正解') : 'おつかれさまでした'}</span></div>
+    const running = snapshot.mode === 'run' && snapshot.run != null;
+    const runActions = button('newcase', `<span>${snapshot.run?.completed.length === snapshot.run?.total ? 'リザルトを見る' : '次の依頼へ'}</span>` + icons.arrow, 'button button-primary next-stage-button new-case-button') + button('title', 'タイトルへ', 'button button-text');
+    const singleActions = (generated ? button('newcase', '<span>次の依頼を受ける</span>' + icons.arrow, 'button button-primary next-stage-button new-case-button') : this.stage.id === 'stage01' ? button('next', '<span>次の業務へ</span>' + icons.arrow, 'button button-primary next-stage-button') : '') + button('retry', `<span>${generated ? '同じ依頼をやり直す' : 'もう一度'}</span>↺`, `button ${generated || this.stage.id === 'stage01' ? 'button-subtle' : 'button-primary'}`) + button('title', 'タイトルへ', 'button button-subtle');
+    return this.modal(`<div class="modal-kicker"><span>${this.runProgress(snapshot)}CASE ${this.stage.number} / ENDING ${choice}</span><span class="ending-stamp ${correct ? 'ending-stamp-c' : ''}">${correct ? this.copy('successLabel', '大正解') : 'おつかれさまでした'}</span></div>
       <p class="ending-subtitle">${escape(ending.subtitle)}</p><h1 class="modal-title ending-title" tabindex="-1" data-focus>${escape(ending.title)}</h1>
       <div class="ending-conversation"><div class="ending-line"><img class="boss-portrait ending-boss-portrait" src="${bossImage}" alt="上司のイラスト"/><div><span>上司 / 部長</span><blockquote>${escape(ending.boss)}</blockquote></div></div><div class="ending-line player-line"><div><span>あなた</span><blockquote>${escape(ending.player)}</blockquote></div><span class="player-avatar">私</span></div></div>
       <p class="ending-explanation">${escape(ending.explanation)}</p>
       <section class="evidence-account"><div><h2>${icons.check} 見つけた手がかり <span>${found.length}/${clues.length}</span></h2>${evidenceTitles(found, '今回は、直感で決めた。')}</div><div><h2>${icons.inspect} 見逃した手がかり <span>${missed.length}/${clues.length}</span></h2>${evidenceTitles(missed, 'すべての手がかりを見つけました。')}</div></section>
       ${highlighted.length ? `<details class="ending-review"><summary>${this.copy('reviewHeading', '手がかりを振り返る')}<span>＋</span></summary><div>${highlighted.map((clue) => `<article><div><span class="review-number">${number(clue)}</span><h3>${escape(clue.title)}</h3><span class="review-status">${snapshot.found.includes(clue.id) ? '発見済み' : '見逃し'}</span></div><p>${escape(clue.body)}</p></article>`).join('')}</div></details>` : ''}`,
-      (generated ? button('newcase', '<span>次の依頼を受ける</span>' + icons.arrow, 'button button-primary next-stage-button new-case-button') : this.stage.id === 'stage01' ? button('next', '<span>次の業務へ</span>' + icons.arrow, 'button button-primary next-stage-button') : '') + button('retry', `<span>${generated ? '同じ依頼をやり直す' : 'もう一度'}</span>↺`, `button ${generated || this.stage.id === 'stage01' ? 'button-subtle' : 'button-primary'}`) + button('title', 'タイトルへ', 'button button-subtle'), 'ending-panel');
+      running ? runActions : singleActions, `ending-panel${running ? ' run-ending-panel' : ''}`);
+  }
+
+  private results(snapshot: Snapshot): string {
+    const completed = snapshot.run?.completed ?? [];
+    const correct = completed.filter((result) => result.correct).length;
+    const found = completed.reduce((sum, result) => sum + result.found, 0);
+    const totalClues = completed.reduce((sum, result) => sum + getStage(result.stageId).clues.length, 0);
+    const elapsed = completed.reduce((sum, result) => sum + result.elapsed, 0);
+    const rows = completed.map((result, index) => `<li class="result-row ${result.correct ? 'result-correct' : ''}"><span class="result-order">${String(index + 1).padStart(2, '0')}</span><div class="result-case"><h2>「${escape(getStage(result.stageId).title)}」</h2><p><span>あなたの解釈</span>${escape(result.choiceLabel)}</p>${result.timedOut ? '<small class="result-timeout">時間切れで判断</small>' : ''}</div><span class="result-status">${result.correct ? icons.check + '意図が伝わった' : 'すれ違い'}</span></li>`).join('');
+    return this.modal(`<div class="modal-kicker"><span>株式会社よしなに / 業務報告書</span><span class="result-filed">全${completed.length}件 完了</span></div><h1 class="modal-title results-title" tabindex="-1" data-focus>本日の、<br>お仕事報告。</h1><div class="result-score"><span class="result-score-number">${correct}<small>/${snapshot.run?.total ?? STAGE_LIST.length}</small></span><div><strong>意図が伝わった</strong><p>最後の依頼まで、おつかれさまでした。</p></div></div><dl class="result-stats"><div><dt>集めた手がかり</dt><dd>${found}<small>/${totalClues}</small></dd></div><div><dt>探索した時間</dt><dd>${clock(elapsed)}</dd></div></dl><div class="result-list-heading"><h2>今日の依頼</h2><span>プレイした順番</span></div><ol class="result-list">${rows}</ol>`, button('start', '<span>もう一度ゲームスタート</span>' + icons.arrow, 'button button-primary') + button('title', 'タイトルへ', 'button button-text'), 'results-panel');
+  }
+
+  private runProgress(snapshot: Snapshot): string {
+    return snapshot.run ? `<span class="run-progress">依頼 ${snapshot.run.current}/${snapshot.run.total}</span>` : '';
+  }
+
+  private musicToggle(snapshot: Snapshot): string {
+    return button('music', `<span>${snapshot.music ? 'ON' : 'OFF'}</span><i></i>`, `toggle-button ${snapshot.music ? 'is-on' : ''}`, `aria-label="BGMを${snapshot.music ? 'オフ' : 'オン'}にする" aria-pressed="${snapshot.music}"`);
   }
 
   private modal(content: string, actions: string, className = ''): string {
