@@ -16,9 +16,12 @@ PWAも音源を保存し、オフラインの音楽デコードやループに�
 | BGM単体 | 7項目成功 | 全編デコード、長さ283.286秒・stereo・非無音比97%、OFFと位置保持、suspend・再開、20回連続切替後の停止 |
 | `npm run test:deployment` | 7項目成功 | サブパスで全5舞台・通常の連続プレイとBGMの開始・画像・選択肢数・WebGL代替表示 |
 | `npm run test:document-ui` | 33項目成功 | 診断用の5ケース選択と開始、320/360/390/800/1440幅、記録・ノート・結末、遅延タップの二重操作防止、例外0 |
-| `npm run test:pwa` | 8項目成功 | 通常UIの5ケースをオフラインで完走・5行リザルト、同じBGMプレイヤーで1.56→57.39秒まで連続再生、206/416、複数タブの更新保護・キャッシュ整理、欠落資産/例外0 |
+| `npm run test:pwa` | 8項目成功 | 通常UIの5ケースをオフラインで完走・5行リザルト、同じBGMプレイヤーで0.37→60.70秒まで連続再生、206/416、複数タブの更新保護・キャッシュ整理、欠落資産/例外0 |
+| GitHub Actions | build/deploy成功 | [公開ワークフロー](https://github.com/cadmium2525/souiuimi/actions/runs/38860673309)。配信元 `c78fe72ed420f05e3bdbbbb28e6d01bd0d91c45e` |
+| 公開版の一致 | 確認済み | `index-DNtMgnx8.js`、`index-BAJKQpsH.css`、worker `98684fdb17528e7a` が最終ビルドと一致し、MP3も保存対象に含む |
+| `npm run test:pwa:live` | 公開HTTPSで4項目成功 | 通常Chromeでインストール適合性エラー0、390/320/800幅のBGM・開始ボタンと案内、オフラインで5ケース完走・5行リザルト・BGM実再生・206/416・通信復帰、欠落資産/例外0 |
 
-画面は `artifacts/run-home-320.png`、`run-results-320.png`、`run-results-bottom-320.png`、`run-ui-results-1440.png` などを目視し、主要操作への重なりなしを確認しました。結果JSONは `run-results.json`、音源の単体確認は `music-controller-results.json` です。WindowsのChrome 155.0.8059.40とソフトウェアWebGLを使用。非表示の再生制御にはvisibilitychangeの模擬も含み、実機iPhone/Safari・実機GPU性能は未確認です。
+画面は `artifacts/run-home-320.png`、`run-results-320.png`、`run-results-bottom-320.png`、`run-ui-results-1440.png` などを目視し、主要操作への重なりなしを確認しました。結果JSONは `run-results.json`、音源の単体確認は `music-controller-results.json`、公開確認は `pwa-live-results.json` です。Playwrightの非同期条件の待機がPromiseの有無だけで終了する問題を切り分け、PWAテストは `page.evaluate` の完了を明示的に待つ方式へ修正して再実行しています。WindowsのChrome 155.0.8059.40とソフトウェアWebGLを使用。非表示の再生制御にはvisibilitychangeの模擬も含み、実機iPhone/Safari・実機GPU性能は未確認です。
 
 以下は過去版の検証履歴です。
 

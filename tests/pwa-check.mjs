@@ -48,6 +48,18 @@ const server = http.createServer(async (req, res) => {
 });
 const phase = async (page, expected) => page.locator(`#ui[data-phase="${expected}"]`).waitFor();
 const action = async (page, name) => page.locator(`[data-action="${name}"]`).first().click();
+// This Playwright version treats the Promise from an async waitForFunction
+// predicate as truthy. Await browser evaluation before deciding to stop polling.
+const pollUntil = async (page, predicate, arg = null, { timeout = 30000 } = {}) => {
+  const deadline = Date.now() + timeout;
+  let value;
+  do {
+    value = await page.evaluate(predicate, arg);
+    if (value) return value;
+    await page.waitForTimeout(100);
+  } while (Date.now() < deadline);
+  throw new Error(`Browser condition did not become true within ${timeout}ms: ${String(predicate)}`);
+};
 const title = async page => {
   const current = await page.locator('#ui').getAttribute('data-phase');
   if (current === 'decision') await action(page, 'back');
@@ -139,10 +151,10 @@ try {
   await page.goto(base); await phase(page, 'title');
   assert.equal(await page.evaluate(() => typeof window.__game), 'undefined');
   assert.equal(await page.evaluate(() => window.isSecureContext), true);
-  await page.waitForFunction(async () => {
+  await pollUntil(page, async () => {
     const registration = await navigator.serviceWorker.getRegistration();
     return registration?.active?.state === 'activated';
-  });
+  }, null, { timeout: 60000 });
   if (!await page.evaluate(() => !!navigator.serviceWorker.controller)) { await page.reload(); await phase(page, 'title'); }
   await page.waitForFunction(() => !!navigator.serviceWorker.controller);
   observations.registration = await page.evaluate(async () => {
@@ -243,7 +255,7 @@ try {
   revision = 2;
   const timerBeforeUpdate = await timer(page);
   await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
-  await page.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting, null, { timeout: 30000 });
+  await pollUntil(page, async () => !!(await navigator.serviceWorker.getRegistration())?.waiting);
   assert.equal(await page.locator('#ui').getAttribute('data-phase'), 'explore');
   assert.equal(await page.locator('#pwa-update-button').isVisible(), false);
   await page.waitForTimeout(1700); assert.ok(await timer(page) < timerBeforeUpdate);
@@ -258,7 +270,7 @@ try {
   await page.locator('#pwa-update-button').click();
   await updateNavigation;
   await phase(page, 'title');
-  await page.waitForFunction(async () => !(await navigator.serviceWorker.getRegistration())?.waiting);
+  await pollUntil(page, async () => !(await navigator.serviceWorker.getRegistration())?.waiting);
   await page.waitForTimeout(1200);
   assert.equal(navigations, 1, 'one user update causes exactly one page reload');
   assert.equal(await page.locator('#pwa-update-button').isVisible(), false);
@@ -275,15 +287,15 @@ try {
   await title(page);
   revision = 3;
   await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
-  await page.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting, null, { timeout: 30000 });
+  await pollUntil(page, async () => !!(await navigator.serviceWorker.getRegistration())?.waiting);
   await page.locator('#pwa-update-button').waitFor({ state: 'visible' });
   const beforeThirdReload = navigations;
   const thirdNavigation = page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame() });
   await page.locator('#pwa-update-button').click();
   await thirdNavigation;
   await phase(page, 'title');
-  await page.waitForFunction(async () => !(await navigator.serviceWorker.getRegistration())?.waiting);
-  await page.waitForFunction(async names => { const keys = await caches.keys(); return names.every(name => !keys.includes(name)); }, initialCacheNames, { timeout: 15000 });
+  await pollUntil(page, async () => !(await navigator.serviceWorker.getRegistration())?.waiting);
+  await pollUntil(page, async names => { const keys = await caches.keys(); return names.every(name => !keys.includes(name)); }, initialCacheNames, { timeout: 15000 });
   assert.equal(navigations - beforeThirdReload, 1);
   observations.cleanupCaches = await cacheState(page);
   assert.equal(Object.keys(observations.cleanupCaches).filter(name => name.startsWith('souiu-imi-precache-')).length, 2, 'retain current and one previous cache');

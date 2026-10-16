@@ -28,6 +28,18 @@ safeProfile();
 let context;
 const phase = (page, expected) => page.locator(`#ui[data-phase="${expected}"]`).waitFor();
 const action = (page, name) => page.locator(`[data-action="${name}"]`).first().click();
+// Await the asynchronous browser predicate ourselves: this Playwright build's
+// waitForFunction stops polling as soon as it receives a truthy Promise object.
+const pollUntil = async (page, predicate, arg = null, { timeout = 30000 } = {}) => {
+  const deadline = Date.now() + timeout;
+  let value;
+  do {
+    value = await page.evaluate(predicate, arg);
+    if (value) return value;
+    await page.waitForTimeout(100);
+  } while (Date.now() < deadline);
+  throw new Error(`Browser condition did not become true within ${timeout}ms: ${String(predicate)}`);
+};
 const pngSize = data => {
   assert.equal(data.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   return [data.readUInt32BE(16), data.readUInt32BE(20)];
@@ -111,7 +123,7 @@ try {
   }
   pass('published HTTPS page, manifest identity and all generated install/Apple/favicon images');
 
-  await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistration())?.active?.state === 'activated', null, { timeout: 60000 });
+  await pollUntil(page, async () => (await navigator.serviceWorker.getRegistration())?.active?.state === 'activated', null, { timeout: 60000 });
   if (!await page.evaluate(() => !!navigator.serviceWorker.controller)) { await page.reload(); await phase(page, 'title'); }
   await page.waitForFunction(() => !!navigator.serviceWorker.controller);
   observations.worker = await page.evaluate(async () => {
