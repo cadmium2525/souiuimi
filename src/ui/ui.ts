@@ -172,10 +172,10 @@ export class GameUI {
         <div class="title-sticker"><span>上司のひと言、</span><strong>どういう意味？</strong><span class="sticker-star">✳</span></div>
         <p class="title-description">${single ? this.copy('titleTagline', 'その解釈、絶対おかしい。\n……え、正解なの！？') : 'ことばは、同じ。意図は、いろいろ。<br>手がかりを集めて、上司の真意を見抜こう。'}</p>
       </section>
-      <section class="title-start">${single ? picker : `<div class="run-invitation"><span class="run-invitation-number">${STAGE_LIST.length}</span><div><p class="eyebrow">本日の業務</p><h2>${STAGE_LIST.length}つの依頼を、<br>ランダムな順番で。</h2></div><span class="run-invitation-note">各ケース<br>探索2分</span></div>`}
+      <section class="title-start">${single ? picker : ''}
         ${button('start', `<span>${single ? '出勤する' : 'ゲームスタート'}</span>` + icons.arrow, 'button button-primary start-button')}
         ${single ? `<p class="title-footnote">同じ舞台でも、依頼は毎回変わる<span>効果音 ${snapshot.sound ? 'ON' : 'OFF'} でスタート</span></p>` : '<p class="title-footnote run-footnote">5つ終えたら、今日のすれ違いを振り返ろう。</p>'}
-        <div class="title-music"><span>BGM</span>${this.musicToggle(snapshot)}<a class="music-credit" href="${import.meta.env.BASE_URL}THIRD_PARTY_NOTICES.md#music" target="_blank" rel="noopener">BGMクレジット ↗</a></div>
+        <div class="title-music"><span>BGM</span>${this.musicToggle(snapshot)}<a class="music-credit" href="${import.meta.env.BASE_URL}music-credits.html" target="_blank" rel="noopener">BGMクレジット ↗</a></div>
         <div class="title-world-label"><span>${single ? this.copy('worldLabel', 'いつものオフィス。\nいつもの、無茶ぶり。') : '今日も、ひと言に\nふりまわされる。'}</span><span class="hand-arrow">↘</span></div>
       </section>
       <div class="world-tag"><span class="tiny-dot"></span> ${this.copy('worldLocation', '株式会社よしなに')} <span class="world-tag-time">${this.copy('worldClock', '14:55')}</span></div>
@@ -187,7 +187,7 @@ export class GameUI {
   private intro(snapshot: Snapshot): string {
     return this.modal(`<div class="modal-kicker"><span>${this.runProgress(snapshot)}本日の業務 / ${this.stage.number}</span><span class="small-clock">${clock(this.stage.seconds)}</span></div>
       <h1 class="modal-title" tabindex="-1" data-focus>指示が、<br>届きました。</h1>
-      <div class="intro-conversation"><div class="boss-portrait-frame"><img class="boss-portrait" src="${bossImage}" alt="上司のイラスト"/><span>株式会社よしなに / 部長</span></div><div class="boss-dialogue"><div class="message-head"><div><strong>上司</strong><span>たった今</span></div><span class="message-status">指示</span></div><blockquote class="boss-message">${this.copy('introBoss', '')}</blockquote></div></div>
+      <div class="intro-conversation"><div class="boss-portrait-frame"><img class="boss-portrait" src="${bossImage}" alt="上司のイラスト"/><span>株式会社よしなに / 部長</span></div><div class="boss-dialogue"><div class="message-head"><div><strong>上司</strong><span>たった今</span></div><span class="message-status">指示</span></div><blockquote class="boss-message">${this.introMessage()}</blockquote></div></div>
       <div class="intro-rule"><span class="rule-number">?</span><p>${this.copy('introInstruction', `制限時間${clock(this.stage.seconds)}。上司の真意を推理しよう。`)}</p></div>
       <div class="intro-controls"><span><b>左</b>で移動</span><span><b>右</b>で視点</span><span>近づいて<b>調べる</b></span></div>`,
       button('explore', `<span>${this.copy('exploreButton', '探索をはじめる')}</span>` + icons.arrow, 'button button-primary'), 'intro-panel');
@@ -220,7 +220,7 @@ export class GameUI {
       <div class="setting-row"><div><strong>効果音</strong><p>音がなくても、すべて遊べます</p></div>${button('sound', `<span>${snapshot.sound ? 'ON' : 'OFF'}</span><i></i>`, `toggle-button ${snapshot.sound ? 'is-on' : ''}`, `aria-label="効果音を${snapshot.sound ? 'オフ' : 'オン'}にする" aria-pressed="${snapshot.sound}"`)}</div>
       <div class="setting-row"><div><strong>描画品質</strong><p>動きが重いときは「軽量」へ</p></div>${button('quality', snapshot.lowQuality ? '軽量' : '標準', 'quality-button', `aria-label="描画品質を${snapshot.lowQuality ? '標準' : '軽量'}に切り替える"`)}</div></div>
       ${button('camera', '<span>視点をリセット</span>↺', 'button button-subtle camera-button')}
-      <a class="music-credit menu-music-credit" href="${import.meta.env.BASE_URL}THIRD_PARTY_NOTICES.md#music" target="_blank" rel="noopener">BGMクレジット ↗</a>
+      <a class="music-credit menu-music-credit" href="${import.meta.env.BASE_URL}music-credits.html" target="_blank" rel="noopener">BGMクレジット ↗</a>
       <div class="control-guide"><h2>操作のメモ</h2><div><span>スマートフォン</span><p>左のスティックで移動<br>画面の右側をスワイプで視点</p></div><div><span>PC</span><p>WASD / 矢印キーで移動<br>マウスをドラッグで視点、Eで調べる</p></div></div>`,
       button('close', '<span>探索に戻る</span>' + icons.arrow, 'button button-primary') + button('title', 'タイトルへ', 'button button-text'), 'menu-panel');
   }
@@ -290,6 +290,20 @@ export class GameUI {
 
   private modal(content: string, actions: string, className = ''): string {
     return `<div class="overlay"><section class="panel ${className}" role="dialog" aria-modal="true" aria-label="ゲーム画面"><div class="panel-scroll">${content}</div><footer class="panel-footer">${actions}</footer></section></div>`;
+  }
+
+  private introMessage(): string {
+    const message = this.stage.copy.introBoss ?? '';
+    const phrase = {
+      stage01: '適当に片付けといて',
+      stage02: message.match(/\d{1,2}時10分前/)?.[0] ?? '',
+      stage03: 'お釣りはいいよ',
+      stage04: '1万円弱',
+      stage05: 'まとめといて',
+    }[this.stage.id];
+    const position = phrase ? message.indexOf(phrase) : -1;
+    if (position < 0) return escape(message);
+    return escape(message.slice(0, position)) + `<strong class="instruction-emphasis">${escape(phrase)}</strong>` + escape(message.slice(position + phrase.length));
   }
 
   private copy(key: string, fallback: string): string { return escape(this.stage.copy[key] ?? fallback); }

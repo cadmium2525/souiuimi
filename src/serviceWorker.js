@@ -113,8 +113,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin || !url.href.startsWith(SCOPE)) return;
   if (request.mode === 'navigate') {
-    // Serve one coherent installed build, including offline game runs.
-    event.respondWith((async () => (await (await caches.open(CACHE)).match(SHELL)) || fetch(request))());
+    // The game shell and its dedicated credits page are separate documents.
+    const documentURL = new URL(url.href); documentURL.search = ''; documentURL.hash = '';
+    const documentAsset = URLS.has(documentURL.href) && documentURL.pathname.endsWith('.html') ? documentURL.href : SHELL;
+    event.respondWith((async () => (await (await caches.open(CACHE)).match(documentAsset)) || fetch(request))());
     return;
   }
   const path = new URL(url.href); path.search = ''; path.hash = '';

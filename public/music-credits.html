@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f5f1e7">
+    <meta name="description" content="「そういう意味じゃない！」のBGMと作者・ライセンスのご案内。">
+    <title>BGMクレジット — そういう意味じゃない！</title>
+    <style>
+      :root {
+        --paper: #f5f1e7;
+        --surface: #fffcf4;
+        --ink: #183e39;
+        --muted: #596b60;
+        --sage: #dce5ce;
+        --orange: #bf481e;
+        --line: #cbd0bd;
+        font-family: "BIZ UDPGothic", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+        color: var(--ink);
+        background: var(--sage);
+        font-synthesis: none;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        line-height: 1.8;
+      }
+      main {
+        width: min(100%, 680px);
+        margin: 5vh auto;
+        padding: clamp(24px, 5vw, 48px);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: var(--paper);
+        box-shadow: 0 16px 50px #183e3910;
+      }
+      p, h1, h2 { margin: 0; }
+      .game-name { color: var(--muted); font-size: 13px; letter-spacing: .04em; }
+      h1 { margin-top: 12px; font-size: clamp(24px, 5.5vw, 34px); line-height: 1.5; letter-spacing: -.035em; }
+      .rule { width: 42px; height: 4px; margin: 22px 0 28px; border-radius: 2px; background: var(--orange); }
+      .label { color: var(--muted); font-size: 13px; letter-spacing: .1em; }
+      h2 { margin-top: 4px; font-size: clamp(25px, 5vw, 32px); line-height: 1.5; }
+      .author { margin-top: 6px; font-size: 16px; }
+      .attribution {
+        margin: 24px 0 16px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--orange);
+        background: var(--surface);
+        font-size: 14px;
+        line-height: 1.9;
+        overflow-wrap: anywhere;
+      }
+      .links { display: grid; gap: 8px; }
+      a { color: var(--ink); text-decoration-thickness: 1px; text-underline-offset: 4px; }
+      a:hover { color: var(--orange); }
+      a:focus-visible { outline: 3px solid var(--orange); outline-offset: 4px; }
+      .links a { display: flex; align-items: center; min-height: 48px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; font-weight: 700; }
+      .note { margin-top: 24px; font-size: 14px; color: var(--muted); }
+      footer { margin-top: 30px; padding-top: 24px; border-top: 1px solid var(--line); }
+      .back { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 52px; width: 100%; padding: 12px 18px; border-radius: 12px; background: var(--ink); color: var(--paper); font-size: 15px; font-weight: 700; text-decoration: none; }
+      .back:hover { background: #28544d; color: var(--paper); }
+      @media (max-width: 380px) { main { margin: 0 auto; border-radius: 18px; } .attribution { padding: 14px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="game-name">そういう意味じゃない！</p>
+        <h1>BGMクレジット</h1>
+        <div class="rule" aria-hidden="true"></div>
+      </header>
+      <section aria-labelledby="track-title">
+        <p class="label">MUSIC</p>
+        <h2 id="track-title" lang="en">Bossa Antigua</h2>
+        <p class="author" lang="en">Kevin MacLeod / Incompetech</p>
+        <div class="attribution" lang="en">
+          <p>"Bossa Antigua" Kevin MacLeod (incompetech.com)</p>
+          <p>Licensed under Creative Commons: By Attribution 4.0 License</p>
+        </div>
+        <nav class="links" aria-label="楽曲とライセンス">
+          <a href="https://incompetech.com/music/royalty-free/index.html?Search=Search&amp;isrc=USUAN1700069" target="_blank" rel="noopener noreferrer">公式作品ページ（外部サイト）</a>
+          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0 ライセンス（外部サイト）</a>
+        </nav>
+        <p class="note">原音源の編集・再エンコードはしていません。ゲーム内では再生音量を下げ、曲全体を繰り返し再生しています。</p>
+        <p class="note">この録音の著作権は作者に帰属します。作者が本ゲームを推奨・支援していることを示すものではありません。</p>
+      </section>
+      <footer>
+        <a class="back" href="./"><span aria-hidden="true">←</span> ゲームへ戻る</a>
+      </footer>
+    </main>
+  </body>
+</html>

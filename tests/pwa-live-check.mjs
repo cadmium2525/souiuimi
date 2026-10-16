@@ -46,6 +46,29 @@ const pngSize = data => {
 };
 const screenshot = (page, name) => page.screenshot({ path: `artifacts/pwa-live-${name}.png`, animations: 'disabled' });
 const overlap = (a, b) => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+const checkOfflineCredits = async page => {
+  const [credits] = await Promise.all([
+    page.waitForEvent('popup'),
+    page.locator('.title-music .music-credit').tap(),
+  ]);
+  credits.on('pageerror', error => errors.push(error.message));
+  credits.on('response', response => { if (response.status() >= 400) responseErrors.push(`${response.status()} ${response.url()}`); });
+  try {
+    await credits.waitForLoadState('domcontentloaded');
+    assert.equal(credits.url(), `${base}music-credits.html`);
+    assert.equal(await credits.locator('h1').innerText(), 'BGMクレジット');
+    const body = await credits.locator('body').innerText();
+    for (const credit of ['Bossa Antigua', 'Kevin MacLeod', 'CC BY 4.0']) assert.ok(body.includes(credit), `offline music credit: ${credit}`);
+    assert.equal(await credits.locator('#world').count(), 0, 'credit navigation must open the credit HTML rather than the game shell');
+    assert.equal(await credits.evaluate(() => navigator.onLine), false);
+    await phase(page, 'title');
+    await screenshot(credits, 'offline-music-credits');
+    return { url: credits.url(), heading: 'BGMクレジット', offline: true, track: 'Bossa Antigua', author: 'Kevin MacLeod', license: 'CC BY 4.0', parentPhase: 'title' };
+  } finally {
+    await credits.close();
+    await page.bringToFront();
+  }
+};
 const captureAudio = () => {
   const NativeAudio = window.Audio;
   window.__testAudio = [];
@@ -177,6 +200,7 @@ try {
   assert.equal(await page.evaluate(() => navigator.onLine), false);
   assert.equal(await page.locator('.stage-pick').count(), 0);
   assert.equal(await page.locator('[data-action="start"]').count(), 1);
+  observations.offlineCredits = await checkOfflineCredits(page);
   observations.audioRanges = await checkAudioRanges(page);
   await action(page, 'start');
   const played = [];
@@ -221,7 +245,7 @@ try {
   await context.setOffline(false); await page.waitForFunction(() => navigator.onLine);
   assert.equal((await page.request.get(manifestUrl)).status(), 200);
   assert.deepEqual(errors, []); assert.deepEqual(responseErrors, []);
-  pass('published installation completes five unique cases offline through results, plays cached acoustic BGM with working byte ranges, and reconnects');
+  pass('published offline credit-link tap opens the credited HTML; installation completes five unique cases through results, plays cached acoustic BGM with working byte ranges, and reconnects');
 } finally {
   observations.browser = context ? await context.browser()?.version() : undefined;
   await fs.writeFile('artifacts/pwa-live-results.json', JSON.stringify({ base, results, errors, responseErrors, observations }, null, 2));

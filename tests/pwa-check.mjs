@@ -87,6 +87,28 @@ const watch = page => {
     if (response.status() >= 400 && !expectedRangeError) responseErrors.push(`${response.status()} ${response.url()}`);
   });
 };
+const checkOfflineCredits = async page => {
+  const [credits] = await Promise.all([
+    page.waitForEvent('popup'),
+    page.locator('.title-music .music-credit').tap(),
+  ]);
+  watch(credits);
+  try {
+    await credits.waitForLoadState('domcontentloaded');
+    assert.equal(credits.url(), `${base}music-credits.html`);
+    assert.equal(await credits.locator('h1').innerText(), 'BGMクレジット');
+    const body = await credits.locator('body').innerText();
+    for (const credit of ['Bossa Antigua', 'Kevin MacLeod', 'CC BY 4.0']) assert.ok(body.includes(credit), `offline music credit: ${credit}`);
+    assert.equal(await credits.locator('#world').count(), 0, 'credit navigation must open the credit HTML rather than the game shell');
+    assert.equal(await credits.evaluate(() => navigator.onLine), false);
+    await phase(page, 'title');
+    await shot(credits, 'offline-music-credits');
+    return { url: credits.url(), heading: 'BGMクレジット', offline: true, track: 'Bossa Antigua', author: 'Kevin MacLeod', license: 'CC BY 4.0', parentPhase: 'title' };
+  } finally {
+    await credits.close();
+    await page.bringToFront();
+  }
+};
 const captureAudio = () => {
   const NativeAudio = window.Audio;
   window.__testAudio = [];
@@ -167,7 +189,7 @@ try {
   const initialCacheNames = Object.keys(observations.initialCaches);
   assert.ok(initialCacheNames.some(name => name.startsWith('souiu-imi-precache-')));
   const cached = Object.values(observations.initialCaches).flat();
-  for (const required of ['index.html', 'manifest.webmanifest', 'characters/boss.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', audioFile]) assert.ok(cached.includes(`${prefix}${required}`), `precache ${required}`);
+  for (const required of ['index.html', 'manifest.webmanifest', 'characters/boss.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'music-credits.html', audioFile]) assert.ok(cached.includes(`${prefix}${required}`), `precache ${required}`);
   assert.ok(cached.some(name => /\/assets\/.*\.js$/.test(name)));
   assert.ok(cached.some(name => /\/assets\/.*\.css$/.test(name)));
   const manifestResponse = await page.request.get(`${base}manifest.webmanifest`);
@@ -197,6 +219,7 @@ try {
   assert.equal(await page.evaluate(() => navigator.onLine), false);
   assert.equal(await page.locator('.stage-pick').count(), 0);
   assert.equal(await page.locator('[data-action="start"]').count(), 1);
+  observations.offlineCredits = await checkOfflineCredits(page);
   observations.audioRanges = await checkAudioRanges(page);
   pass('offline precached acoustic recording serves exact first, suffix and open byte ranges plus an expected 416');
 
@@ -238,7 +261,7 @@ try {
   assert.equal(observations.offlineAudioEnd[0].paused, false); assert.equal(observations.offlineAudioEnd[0].error, null);
   await shot(page, 'offline-five-case-results');
   await action(page, 'start'); await explore(page);
-  pass('offline normal play completes five unique cases, natural cinematics and results with continuous acoustic BGM');
+  pass('offline credit-link tap opens the credited HTML; normal play completes five unique cases, natural cinematics and results with continuous acoustic BGM');
 
   await context.setOffline(false);
   await page.waitForFunction(() => navigator.onLine);

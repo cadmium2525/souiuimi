@@ -73,6 +73,8 @@ try {
   assert.equal((await snap(page)).mode, 'run');
   assert.equal((await snap(page)).run, null);
   assert.equal(await page.locator('.stage-picker').count(), 0);
+  assert.equal(await page.locator('.run-invitation').count(), 0);
+  assert.doesNotMatch(await page.locator('.title-start').innerText(), /5つの依頼を|ランダムな順番で/);
   assert.equal(await page.locator('[data-action=start]').innerText(), 'ゲームスタート');
   assert.equal(await page.locator('[data-action=music]').getAttribute('aria-pressed'), 'true');
   await page.waitForTimeout(350);
@@ -94,6 +96,9 @@ try {
   for (let index = 0; index < 5; index++) {
     const intro = await snap(page), instance = await page.evaluate(() => window.__game.instance());
     assert.equal(intro.phase, 'INTRO'); assert.equal(intro.mode, 'run');
+    assert.equal(await page.locator('.boss-message').innerText(), instance.copy.introBoss);
+    assert.equal(await page.locator('.boss-message strong').count(), 1);
+    assert.ok(await page.locator('.boss-message strong').evaluate(el => Number(getComputedStyle(el).fontWeight) > Number(getComputedStyle(el.parentElement).fontWeight)), 'ambiguous instruction must be visually bolder');
     assert.equal(intro.run.current, index + 1); assert.equal(intro.run.total, 5);
     assert.equal(intro.run.completed.length, index);
     assert.equal(await page.locator('.run-progress').innerText(), `依頼 ${index + 1}/5`);
@@ -107,6 +112,13 @@ try {
 
     if (index === 0) {
       await action(page, 'menu');
+      const beforeCredits = await snap(page);
+      await page.locator('.menu-music-credit').scrollIntoViewIfNeeded();
+      const [credits] = await Promise.all([page.waitForEvent('popup'), page.locator('.menu-music-credit').tap()]);
+      await credits.waitForLoadState('domcontentloaded');
+      assert.equal(await credits.locator('h1').innerText(), 'BGMクレジット');
+      await credits.close(); await page.bringToFront();
+      assert.deepEqual(await snap(page), beforeCredits, 'opening credits must preserve the paused game');
       const soundBefore = (await snap(page)).sound;
       await action(page, 'music');
       assert.equal((await snap(page)).music, false);
@@ -247,8 +259,17 @@ try {
   for (const [width, height] of viewports) {
     await page.setViewportSize({ width, height }); await frame(page);
     assert.equal(await page.locator('.stage-picker').count(), 0);
+    assert.equal(await page.locator('.run-invitation').count(), 0);
     await visible(page, '[data-action=start]', width, height);
     await visible(page, '[data-action=music]', width, height);
+    await visible(page, '.title-music .music-credit', width, height);
+    const [credits] = await Promise.all([page.waitForEvent('popup'), width > 1000 ? page.locator('.title-music .music-credit').click() : page.locator('.title-music .music-credit').tap()]);
+    await credits.waitForLoadState('domcontentloaded');
+    assert.equal(await credits.locator('h1').innerText(), 'BGMクレジット');
+    assert.match(await credits.locator('body').innerText(), /Bossa Antigua/);
+    assert.equal(await credits.locator('#world').count(), 0);
+    assert.equal((await snap(page)).phase, 'TITLE');
+    await credits.close(); await page.bringToFront();
     const geometry = await page.evaluate(() => {
       const rect = selector => { const box = document.querySelector(selector).getBoundingClientRect(); return { x: box.x, y: box.y, bottom: box.bottom, right: box.right }; };
       return { copy: rect('.title-copy'), start: rect('.title-start') };

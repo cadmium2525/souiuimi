@@ -189,9 +189,13 @@ a:focus-visible{outline:3px solid var(--orange);outline-offset:4px}
 .run-footnote{line-height:1.7}
 .title-music{display:flex;align-items:center;gap:11px;margin-top:15px;font-size:11px;min-height:44px}
 .title-music>.toggle-button{min-width:82px}
-.music-credit{font-size:9px;line-height:1.7;color:var(--muted);text-decoration:underline;text-underline-offset:3px;touch-action:manipulation}
+.music-credit{display:inline-flex;align-items:center;min-height:44px;font-size:9px;line-height:1.7;color:var(--muted);text-decoration:underline;text-underline-offset:3px;touch-action:manipulation}
+#ui a{pointer-events:auto}
+#ui a:focus-visible{outline:3px solid var(--orange);outline-offset:4px}
+.intro-panel .boss-message{font-weight:400}
+.intro-panel .instruction-emphasis{font-weight:900}
 .title-music>.music-credit{margin-left:auto}
-.menu-music-credit{display:block;margin-top:14px;width:max-content}
+.menu-music-credit{display:flex;margin-top:14px;width:max-content}
 .run-progress{display:inline-block;padding:4px 7px;border:1px solid var(--line);border-radius:5px;color:var(--ink);margin-right:9px;font-size:9px;letter-spacing:.04em;white-space:nowrap}
 .hud-run-progress{display:block;font-size:9px;letter-spacing:.04em;color:var(--paper);margin-bottom:3px;font-weight:700}
 .timer-label:has(.hud-run-progress){opacity:1}

@@ -15,7 +15,7 @@ Kevin MacLeod の **Bossa Antigua** を使用する。ギター、ベース、�
 
 ## ライセンスと表示
 
-2026年10月16日に作者の公式作品ページで **Creative Commons Attribution 4.0 International** のクレジット指定を確認した。配布・ゲーム組み込み・音量変更は同ライセンスの条件に従う。ゲーム内のクレジットから、同梱の `THIRD_PARTY_NOTICES.md#music` に到達できる。
+2026年10月16日に作者の公式作品ページで **Creative Commons Attribution 4.0 International** のクレジット指定を確認した。配布・ゲーム組み込み・音量変更は同ライセンスの条件に従う。ゲーム内のクレジットから、同梱の `music-credits.html` を開ける。`THIRD_PARTY_NOTICES.md#music` にも同じ表記を維持する。
 
 > "Bossa Antigua" Kevin MacLeod (incompetech.com)
 > Licensed under Creative Commons: By Attribution 4.0 License
