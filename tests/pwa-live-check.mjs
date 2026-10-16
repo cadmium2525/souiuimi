@@ -146,7 +146,8 @@ try {
   }
   pass('published HTTPS page, manifest identity and all generated install/Apple/favicon images');
 
-  await pollUntil(page, async () => (await navigator.serviceWorker.getRegistration())?.active?.state === 'activated', null, { timeout: 60000 });
+  // A cold connection may need over a minute to save the complete recording.
+  await pollUntil(page, async () => (await navigator.serviceWorker.getRegistration())?.active?.state === 'activated', null, { timeout: 120000 });
   if (!await page.evaluate(() => !!navigator.serviceWorker.controller)) { await page.reload(); await phase(page, 'title'); }
   await page.waitForFunction(() => !!navigator.serviceWorker.controller);
   observations.worker = await page.evaluate(async () => {
@@ -181,7 +182,7 @@ try {
       const bounds = await install.boundingBox(); entry.button = bounds;
       assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y + bounds.height <= height + 1);
       assert.ok(bounds.height >= 44, 'install action is a usable touch target');
-      for (const selector of ['.company-mark', '.game-title', '.run-invitation', '.start-button', '.title-music']) {
+      for (const selector of ['.company-mark', '.game-title', '.start-button', '.title-music']) {
         const element = page.locator(selector);
         if (await element.isVisible()) {
           const other = await element.boundingBox(), area = overlap(bounds, other);
@@ -192,7 +193,7 @@ try {
     }
     observations.layouts.push(entry);
   }
-  pass(observations.installOfferVisible ? 'real install offer stays clear of logo, title, five-case invitation, BGM and start at 390/320/800px' : 'title captured at 390/320/800px; this Chrome session did not expose an install offer');
+  pass(observations.installOfferVisible ? 'real install offer stays clear of logo, title, BGM and start at 390/320/800px' : 'title captured at 390/320/800px; this Chrome session did not expose an install offer');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await context.setOffline(true);

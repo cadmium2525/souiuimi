@@ -14,6 +14,9 @@ BGMクレジットが反応しない原因だった、UI内リンクのpointer-e
 | クレジットページ | 320/390/800幅で確認 | 曲・作者・CC BY 4.0の表記、横はみ出しなし、リンクの高さ44px以上、外部CSS/JS/フォントなし |
 | 導入画面の目視 | 全5ケース×320/390幅 | 10画面で指定フレーズだけfont-weight900、本文400、原文一致、本文と探索ボタンの収まりを確認。可変の「12時10分前」にも対応、例外0 |
 | `npm run test:pwa` | 8項目成功 | オフラインのホームから実タップで専用クレジットHTMLを開き、曲・作者・ライセンス・元画面の保持を確認。5ケース完走・リザルト、BGM・206/416・複数タブの更新・キャッシュ整理も成功、欠落資産/例外0 |
+| GitHub Actions | build/deploy成功 | [公開ワークフロー](https://github.com/cadmium2525/souiuimi/actions/runs/38871273773)。配信元 `bac49307f8d2a8c423595edd19bfd227bc7616b5` |
+| 公開版の一致 | 確認済み | `index-BKf54_tt.js`、`index-Oo2sYuP1.css`、worker `b8bfb4e34aa77b7f` が最終ビルドと一致し、専用HTMLも配信 |
+| `npm run test:pwa:live` | 公開HTTPSで4項目成功 | 通常Chrome・390/320/800幅、オフラインでクレジットを実タップし専用ページの曲・作者・ライセンスを確認。元画面保持、5ケース完走とBGM・リザルト・206/416も成功、欠落資産/例外0 |
 
 画像は `artifacts/run-home-320.png`、`music-credits-320.png` など、結果は `run-results.json` に保存しています。WindowsのChrome 155.0.8059.40、ソフトウェアWebGLを使用。実機iPhone/Safari・実機GPU性能は未確認です。
 
